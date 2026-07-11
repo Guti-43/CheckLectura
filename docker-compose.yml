@@ -1,0 +1,23 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: checklectura
+      POSTGRES_USER: checklectura
+      POSTGRES_PASSWORD: checklectura
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql://checklectura:checklectura@db:5432/checklectura
+    depends_on:
+      - db
+    ports:
+      - "5667:5667"
+
+volumes:
+  db_data:
+

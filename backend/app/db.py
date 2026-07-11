@@ -1,0 +1,450 @@
+from __future__ import annotations
+
+import os
+import time
+from contextlib import contextmanager
+from typing import Any, Generator
+
+import psycopg
+
+DATABASE_URL = os.getenv(
+    'DATABASE_URL',
+    'postgresql://checklectura:checklectura@db:5432/checklectura',
+)
+
+DEFAULT_USERS = [
+    {'name': 'Giada', 'sort_order': 1},
+    {'name': 'Guti', 'sort_order': 2},
+]
+
+DEFAULT_PLANS = [
+    {
+        'name': 'Plan compartido',
+        'description': 'Lectura biblica diaria en pareja.',
+        'start_day': '2026-07-11',
+        'chapters_per_day': 3,
+        'bible_total_chapters': 1189,
+        'sort_order': 1,
+        'members': ['Giada', 'Guti'],
+    },
+    {
+        'name': 'Giada - Plan personal',
+        'description': 'Plan privado de lectura de Giada.',
+        'start_day': '2026-07-11',
+        'chapters_per_day': 3,
+        'bible_total_chapters': 1189,
+        'sort_order': 2,
+        'members': ['Giada'],
+    },
+    {
+        'name': 'Guti - Plan personal',
+        'description': 'Plan privado de lectura de Guti.',
+        'start_day': '2026-07-11',
+        'chapters_per_day': 3,
+        'bible_total_chapters': 1189,
+        'sort_order': 3,
+        'members': ['Guti'],
+    },
+]
+
+DEFAULT_PLAN_DAYS = {
+    'Plan compartido': [
+        {'day_date': '2026-07-11', 'title': 'Genesis 49-50 y Exodo 1', 'scripture': 'Genesis 49-50, Exodo 1', 'notes': ''},
+        {'day_date': '2026-07-12', 'title': 'Exodo 2-4', 'scripture': 'Exodo 2-4', 'notes': ''},
+        {'day_date': '2026-07-13', 'title': 'Exodo 5-7', 'scripture': 'Exodo 5-7', 'notes': ''},
+    ],
+    'Giada - Plan personal': [
+        {'day_date': '2026-07-11', 'title': 'Genesis 49-50 y Exodo 1', 'scripture': 'Genesis 49-50, Exodo 1', 'notes': ''},
+        {'day_date': '2026-07-12', 'title': 'Exodo 2-4', 'scripture': 'Exodo 2-4', 'notes': ''},
+        {'day_date': '2026-07-13', 'title': 'Exodo 5-7', 'scripture': 'Exodo 5-7', 'notes': ''},
+    ],
+    'Guti - Plan personal': [
+        {'day_date': '2026-07-11', 'title': 'Genesis 49-50 y Exodo 1', 'scripture': 'Genesis 49-50, Exodo 1', 'notes': ''},
+        {'day_date': '2026-07-12', 'title': 'Exodo 2-4', 'scripture': 'Exodo 2-4', 'notes': ''},
+        {'day_date': '2026-07-13', 'title': 'Exodo 5-7', 'scripture': 'Exodo 5-7', 'notes': ''},
+    ],
+}
+
+DEFAULT_PLAN_CHECKINS = {
+    'Plan compartido': {
+        '2026-07-11': {'Giada': True, 'Guti': True},
+        '2026-07-12': {'Giada': False, 'Guti': False},
+        '2026-07-13': {'Giada': False, 'Guti': False},
+    },
+    'Giada - Plan personal': {
+        '2026-07-11': {'Giada': True},
+        '2026-07-12': {'Giada': True},
+        '2026-07-13': {'Giada': False},
+    },
+    'Guti - Plan personal': {
+        '2026-07-11': {'Guti': True},
+        '2026-07-12': {'Guti': False},
+        '2026-07-13': {'Guti': True},
+    },
+}
+
+
+@contextmanager
+def get_conn() -> Generator[psycopg.Connection[Any], None, None]:
+    conn = psycopg.connect(DATABASE_URL)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def wait_for_db(max_attempts: int = 20) -> None:
+    last_error: Exception | None = None
+    for _ in range(max_attempts):
+        try:
+            with get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+                    cur.fetchone()
+            return
+        except Exception as exc:  # pragma: no cover - startup retry
+            last_error = exc
+            time.sleep(1)
+    raise RuntimeError('Database is not ready') from last_error
+
+
+def init_db() -> None:
+    wait_for_db()
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS users (
+                    id serial PRIMARY KEY,
+                    name text NOT NULL UNIQUE,
+                    sort_order integer NOT NULL DEFAULT 0
+                )
+                '''
+            )
+            cur.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS plans (
+                    id serial PRIMARY KEY,
+                    name text NOT NULL UNIQUE,
+                    description text NOT NULL DEFAULT '',
+                    start_day date NOT NULL,
+                    chapters_per_day integer NOT NULL DEFAULT 3,
+                    bible_total_chapters integer NOT NULL DEFAULT 1189,
+                    sort_order integer NOT NULL DEFAULT 0,
+                    updated_at timestamptz NOT NULL DEFAULT now()
+                )
+                '''
+            )
+            cur.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS plan_members (
+                    plan_id integer NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+                    user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    PRIMARY KEY (plan_id, user_id)
+                )
+                '''
+            )
+            cur.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS plan_days (
+                    id serial PRIMARY KEY,
+                    plan_id integer NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+                    day_date date NOT NULL,
+                    title text NOT NULL,
+                    scripture text NOT NULL,
+                    notes text NOT NULL DEFAULT '',
+                    updated_at timestamptz NOT NULL DEFAULT now(),
+                    UNIQUE (plan_id, day_date)
+                )
+                '''
+            )
+            cur.execute(
+                '''
+                CREATE TABLE IF NOT EXISTS plan_checkins (
+                    plan_day_id integer NOT NULL REFERENCES plan_days(id) ON DELETE CASCADE,
+                    user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    is_read boolean NOT NULL DEFAULT false,
+                    updated_at timestamptz NOT NULL DEFAULT now(),
+                    PRIMARY KEY (plan_day_id, user_id)
+                )
+                '''
+            )
+            conn.commit()
+
+        seed_users(conn)
+        seed_plans(conn)
+        seed_plan_members(conn)
+        seed_plan_days(conn)
+        seed_plan_checkins(conn)
+
+
+def seed_users(conn: psycopg.Connection[Any]) -> None:
+    with conn.cursor() as cur:
+        for user in DEFAULT_USERS:
+            cur.execute(
+                '''
+                UPDATE users
+                SET name = %s
+                WHERE sort_order = %s
+                ''',
+                (user['name'], user['sort_order']),
+            )
+            if cur.rowcount == 0:
+                cur.execute(
+                    '''
+                    INSERT INTO users (name, sort_order)
+                    VALUES (%s, %s)
+                    ON CONFLICT (name) DO NOTHING
+                    ''',
+                    (user['name'], user['sort_order']),
+                )
+        conn.commit()
+
+
+def get_users(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, name, sort_order
+            FROM users
+            ORDER BY sort_order ASC, id ASC
+            '''
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+
+def seed_plans(conn: psycopg.Connection[Any]) -> None:
+    with conn.cursor() as cur:
+        for plan in DEFAULT_PLANS:
+            cur.execute(
+                '''
+                INSERT INTO plans (name, description, start_day, chapters_per_day, bible_total_chapters, sort_order)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (name) DO UPDATE
+                SET description = EXCLUDED.description,
+                    start_day = EXCLUDED.start_day,
+                    chapters_per_day = EXCLUDED.chapters_per_day,
+                    bible_total_chapters = EXCLUDED.bible_total_chapters,
+                    sort_order = EXCLUDED.sort_order,
+                    updated_at = now()
+                ''',
+                (
+                    plan['name'],
+                    plan['description'],
+                    plan['start_day'],
+                    plan['chapters_per_day'],
+                    plan['bible_total_chapters'],
+                    plan['sort_order'],
+                ),
+            )
+        conn.commit()
+
+
+def get_plans(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            FROM plans
+            ORDER BY sort_order ASC, id ASC
+            '''
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+
+def get_plan_by_name(conn: psycopg.Connection[Any], name: str) -> dict[str, Any] | None:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            FROM plans
+            WHERE name = %s
+            ''',
+            (name,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def seed_plan_members(conn: psycopg.Connection[Any]) -> None:
+    users = get_users(conn)
+    user_id_by_name = {user['name']: user['id'] for user in users}
+    plans = get_plans(conn)
+    plan_id_by_name = {plan['name']: plan['id'] for plan in plans}
+
+    with conn.cursor() as cur:
+        for plan_name, member_names in ((plan['name'], plan['members']) for plan in DEFAULT_PLANS):
+            plan_id = plan_id_by_name[plan_name]
+            for member_name in member_names:
+                cur.execute(
+                    '''
+                    INSERT INTO plan_members (plan_id, user_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT DO NOTHING
+                    ''',
+                    (plan_id, user_id_by_name[member_name]),
+                )
+        conn.commit()
+
+
+def get_plan_members(conn: psycopg.Connection[Any], plan_id: int) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT u.id, u.name, u.sort_order
+            FROM plan_members pm
+            JOIN users u ON u.id = pm.user_id
+            WHERE pm.plan_id = %s
+            ORDER BY u.sort_order ASC, u.id ASC
+            ''',
+            (plan_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+
+def seed_plan_days(conn: psycopg.Connection[Any]) -> None:
+    plans = get_plans(conn)
+    plan_id_by_name = {plan['name']: plan['id'] for plan in plans}
+    with conn.cursor() as cur:
+        for plan_name, days in DEFAULT_PLAN_DAYS.items():
+            plan_id = plan_id_by_name[plan_name]
+            for day in days:
+                cur.execute(
+                    '''
+                    INSERT INTO plan_days (plan_id, day_date, title, scripture, notes)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT (plan_id, day_date) DO NOTHING
+                    ''',
+                    (plan_id, day['day_date'], day['title'], day['scripture'], day['notes']),
+                )
+        conn.commit()
+
+
+def get_plan_days(conn: psycopg.Connection[Any], plan_id: int, limit: int | None = None, ascending: bool = False) -> list[dict[str, Any]]:
+    order = 'ASC' if ascending else 'DESC'
+    query = f'''
+        SELECT id, plan_id, day_date, title, scripture, notes, updated_at
+        FROM plan_days
+        WHERE plan_id = %s
+        ORDER BY day_date {order}
+    '''
+    params: tuple[Any, ...] = (plan_id,)
+    if limit is not None:
+        query += ' LIMIT %s'
+        params = (plan_id, limit)
+
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(query, params)
+        return [dict(row) for row in cur.fetchall()]
+
+
+def get_plan_day(conn: psycopg.Connection[Any], plan_day_id: int) -> dict[str, Any] | None:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, plan_id, day_date, title, scripture, notes, updated_at
+            FROM plan_days
+            WHERE id = %s
+            ''',
+            (plan_day_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def ensure_plan_day(conn: psycopg.Connection[Any], plan_id: int, day: date) -> int:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            INSERT INTO plan_days (plan_id, day_date, title, scripture, notes)
+            VALUES (%s, %s, '', '', '')
+            ON CONFLICT (plan_id, day_date) DO UPDATE
+            SET updated_at = now()
+            RETURNING id
+            ''',
+            (plan_id, day),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return row['id']
+
+
+def seed_plan_checkins(conn: psycopg.Connection[Any]) -> None:
+    users = get_users(conn)
+    user_id_by_name = {user['name']: user['id'] for user in users}
+    plans = get_plans(conn)
+    plan_id_by_name = {plan['name']: plan['id'] for plan in plans}
+
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        for plan_name, per_day in DEFAULT_PLAN_CHECKINS.items():
+            plan_id = plan_id_by_name[plan_name]
+            cur.execute('SELECT id, day_date FROM plan_days WHERE plan_id = %s', (plan_id,))
+            plan_days = cur.fetchall()
+            day_id_by_date = {row['day_date'].isoformat(): row['id'] for row in plan_days}
+            for day_date, checkins in per_day.items():
+                plan_day_id = day_id_by_date[day_date]
+                for user_name, is_read in checkins.items():
+                    cur.execute(
+                        '''
+                        INSERT INTO plan_checkins (plan_day_id, user_id, is_read)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (plan_day_id, user_id) DO NOTHING
+                        ''',
+                        (plan_day_id, user_id_by_name[user_name], is_read),
+                    )
+        conn.commit()
+
+
+def get_plan_checkins(conn: psycopg.Connection[Any], plan_day_id: int) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT u.id AS user_id, u.name, COALESCE(c.is_read, false) AS is_read, c.updated_at
+            FROM users u
+            JOIN plan_members pm ON pm.user_id = u.id
+            LEFT JOIN plan_checkins c
+              ON c.user_id = u.id AND c.plan_day_id = %s
+            WHERE pm.plan_id = (SELECT plan_id FROM plan_days WHERE id = %s)
+            ORDER BY u.sort_order ASC, u.id ASC
+            ''',
+            (plan_day_id, plan_day_id),
+        )
+        return [dict(row) for row in cur.fetchall()]
+
+
+def upsert_plan_day(conn: psycopg.Connection[Any], plan_id: int, day: date, title: str, scripture: str, notes: str) -> dict[str, Any]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            INSERT INTO plan_days (plan_id, day_date, title, scripture, notes)
+            VALUES (%s, %s, %s, %s, %s)
+            ON CONFLICT (plan_id, day_date) DO UPDATE
+            SET title = EXCLUDED.title,
+                scripture = EXCLUDED.scripture,
+                notes = EXCLUDED.notes,
+                updated_at = now()
+            RETURNING id, plan_id, day_date, title, scripture, notes, updated_at
+            ''',
+            (plan_id, day, title, scripture, notes),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row)
+
+
+def set_plan_checkin(conn: psycopg.Connection[Any], plan_day_id: int, user_id: int, is_read: bool) -> dict[str, Any]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            INSERT INTO plan_checkins (plan_day_id, user_id, is_read)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (plan_day_id, user_id) DO UPDATE
+            SET is_read = EXCLUDED.is_read,
+                updated_at = now()
+            RETURNING plan_day_id, user_id, is_read, updated_at
+            ''',
+            (plan_day_id, user_id, is_read),
+        )
+        row = cur.fetchone()
+        conn.commit()
+        return dict(row)

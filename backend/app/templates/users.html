@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% set page_title = "Usuarios - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Usuarios simples</p>
+    <h2>Personas del plan</h2>
+    <p class="muted">El acceso usa solo el nombre y estos dos perfiles quedan fijos.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="grid stats-grid">
+    {% for user in users %}
+    <article class="stat-card">
+      <span>Usuario {{ loop.index }}</span>
+      <strong>{{ user.name }}</strong>
+      <p class="muted">Orden {{ user.sort_order }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

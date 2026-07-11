@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% set page_title = "Plan - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Plan de lectura</p>
+    <h2>Resumen general del plan</h2>
+    <p class="muted">Datos importantes para seguir el ritmo de lectura diaria.</p>
+  </div>
+  <div class="status-pill">Inicio {{ start_day_label }}</div>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card"><span>Dia que empezo</span><strong>{{ start_day_label }}</strong></article>
+  <article class="stat-card"><span>Capitulos por dia</span><strong>{{ chapters_per_day }}</strong></article>
+  <article class="stat-card"><span>Capitulos de hoy</span><strong>{{ selected_row.scripture if selected_row else 'Sin definir' }}</strong></article>
+  <article class="stat-card"><span>Fin estimado</span><strong>{{ estimated_finish_label }}</strong></article>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card"><span>Capitulos totales Biblia</span><strong>{{ bible_total_chapters }}</strong></article>
+  <article class="stat-card"><span>Ritmo total</span><strong>{{ estimated_total_days }} dias</strong></article>
+  <article class="stat-card"><span>Capitulos cubiertos</span><strong>{{ chapters_covered }}</strong></article>
+  <article class="stat-card"><span>Capitulos restantes</span><strong>{{ chapters_left }}</strong></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Participantes</p>
+      <h3>Quien forma parte del plan</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for participant in participants %}
+    <article class="stat-card">
+      <span>{{ participant.name }}</span>
+      <strong>{{ participant.read_days }}/{{ stats.total_days }}</strong>
+      <p class="muted">Falta en {{ participant.missed_days }} dias</p>
+      <p class="muted">Racha actual: {{ participant.current_streak }} | Mejor racha: {{ participant.best_streak }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Quien lee antes</p>
+      <h3>Primero en marcar</h3>
+    </div>
+    <span class="muted">Basado en la hora de guardado del checkin</span>
+  </div>
+  <div class="list-stack compact">
+    {% for participant in participants_by_early %}
+    <div class="list-item">
+      <div>
+        <strong>{{ participant.name }}</strong>
+        <p>{{ participant.first_reader_count }} veces ha sido la primera en marcar</p>
+      </div>
+      <span class="pill warn">{{ participant.first_reader_count }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Constancia</p>
+      <h3>Quien se salta menos dias</h3>
+    </div>
+  </div>
+  <div class="list-stack compact">
+    {% for participant in participants_by_consistency %}
+    <div class="list-item">
+      <div>
+        <strong>{{ participant.name }}</strong>
+        <p>{{ participant.missed_days }} dias saltados | {{ participant.completion }}% completado</p>
+      </div>
+      <span class="pill ok">Racha {{ participant.current_streak }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Rachas</p>
+      <h3>Mejores momentos</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for participant in participants_by_streak %}
+    <article class="stat-card">
+      <span>{{ participant.name }}</span>
+      <strong>{{ participant.current_streak }}</strong>
+      <p class="muted">Mejor racha: {{ participant.best_streak }} dias</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Dia activo</p>
+      <h3>{{ selected_day_label }}</h3>
+    </div>
+    <a class="button secondary" href="/days/{{ selected_row.day_date if selected_row else selected_day.isoformat() }}">Abrir dia</a>
+  </div>
+  {% if selected_row %}
+  <div class="notes-box">
+    <p class="eyebrow">Capitulos del dia</p>
+    <p><strong>{{ selected_row.title or 'Sin titulo' }}</strong></p>
+    <p class="muted">{{ selected_row.scripture or 'Sin capitulos definidos' }}</p>
+    <p class="muted">Actualizado: {{ selected_row.updated_at }}</p>
+  </div>
+  {% else %}
+  <p class="muted">Todavia no hay un dia cargado para esta fecha.</p>
+  {% endif %}
+</section>
+{% endblock %}

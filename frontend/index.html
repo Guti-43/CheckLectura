@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CheckLectura</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Lectura diaria</p>
+          <h1>CheckLectura</h1>
+          <p class="subtitle">
+            Seguimiento compartido de la lectura biblica de 3 capitulos al dia.
+          </p>
+        </div>
+        <div class="status-pill" id="global-status">Cargando...</div>
+      </section>
+
+      <section class="stats" id="stats"></section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Dia seleccionado</p>
+            <h2 id="selected-date-label">--</h2>
+          </div>
+          <label class="date-picker">
+            <span>Fecha</span>
+            <input id="date-input" type="date" />
+          </label>
+        </div>
+
+        <div class="reading-card" id="reading-card">
+          <div class="reading-top">
+            <span class="chapter-badge" id="read-state">Pendiente</span>
+            <button class="button secondary" id="toggle-read">Marcar leido</button>
+          </div>
+
+          <h3 id="reading-title">Sin datos</h3>
+          <p class="scripture" id="reading-scripture">Carga o crea un capitulo para este dia.</p>
+
+          <div class="checklist-block">
+            <div class="checklist-head">
+              <div>
+                <p class="eyebrow">Checklist del dia</p>
+                <h3>Quien lo ha leido</h3>
+              </div>
+            </div>
+            <div class="checklist" id="checklist"></div>
+          </div>
+
+          <label class="field">
+            <span>Titulo</span>
+            <input id="title-input" type="text" placeholder="Genesis 49-50 y Exodus 1" />
+          </label>
+
+          <label class="field">
+            <span>Capitulos</span>
+            <input id="scripture-input" type="text" placeholder="Genesis 49-50, Exodus 1" />
+          </label>
+
+          <label class="field">
+            <span>Notas</span>
+            <textarea id="notes-input" rows="3" placeholder="Anotaciones, resumen, ideas..."></textarea>
+          </label>
+
+          <div class="actions">
+            <button class="button primary" id="save-day">Guardar dia</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Calendario / lista</p>
+            <h2>Ultimos dias</h2>
+          </div>
+        </div>
+        <div class="timeline" id="recent-days"></div>
+      </section>
+    </main>
+
+    <template id="day-template">
+      <button class="timeline-item" type="button">
+        <div>
+          <strong class="timeline-date"></strong>
+          <p class="timeline-title"></p>
+        </div>
+        <span class="timeline-state"></span>
+      </button>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set page_title = "Dia - CheckLectura" %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Dia seleccionado</p>
+      <h2>{{ day_view.day_label }}</h2>
+    </div>
+    <a class="button secondary" href="/">Volver a hoy</a>
+  </div>
+
+  <form class="form-grid" method="post" action="/days/{{ day_view.day_date }}/save">
+    <label>
+      <span>Titulo</span>
+      <input type="text" name="title" value="{{ day_view.title }}" placeholder="Genesis 49-50 y Exodus 1" />
+    </label>
+    <label>
+      <span>Capitulos</span>
+      <input type="text" name="scripture" value="{{ day_view.scripture }}" placeholder="Genesis 49-50, Exodus 1" />
+    </label>
+    <label class="full">
+      <span>Notas</span>
+      <textarea name="notes" rows="5" placeholder="Anotaciones, resumen, ideas...">{{ day_view.notes }}</textarea>
+    </label>
+    <div class="full actions">
+      <button class="button primary" type="submit">Guardar cambios</button>
+      <span class="muted">Actualizado: {{ day_view.updated_at or 'sin fecha' }}</span>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Checklist del dia</p>
+      <h3>Quien lo ha leido</h3>
+    </div>
+  </div>
+
+  <div class="checklist-list">
+    {% for item in day_view.checklist %}
+    <form class="check-row" method="post" action="/days/{{ day_view.day_date }}/checkins/{{ item.user_id }}">
+      <div>
+        <strong>{{ item.name }}</strong>
+        <p>{{ 'Ya lo leyo' if item.is_read else 'Pendiente de lectura' }}</p>
+      </div>
+      <input type="hidden" name="is_read" value="{{ 'false' if item.is_read else 'true' }}" />
+      <button class="button {{ 'secondary' if item.is_read else 'primary' }}" type="submit">
+        {{ 'Marcar no leido' if item.is_read else 'Marcar leido' }}
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set page_title = "Dias - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Calendario / lista</p>
+    <h2>Todos los dias</h2>
+    <p class="muted">Vista general del plan y su estado.</p>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="list-stack compact">
+    {% for item in days %}
+    <a class="list-item" href="/days/{{ item.day_date }}">
+      <div>
+        <strong>{{ item.day_label }}</strong>
+        <p>{{ item.title or item.scripture or 'Sin titulo' }}</p>
+      </div>
+      <span class="pill {{ 'ok' if item.is_read else 'warn' }}">{{ 'Leido' if item.is_read else 'Pendiente' }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

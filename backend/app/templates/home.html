@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set page_title = "Hoy - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Capitulo de hoy</p>
+    <h2>{{ target_day_label }}</h2>
+    <p class="muted">La lectura de hoy aparece aqui con el estado de cada persona.</p>
+  </div>
+  <div class="status-pill">{{ 'Leido por ambos' if day and day.is_read else 'Pendiente' }}</div>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card"><span>Total dias</span><strong>{{ stats.total_days }}</strong></article>
+  <article class="stat-card"><span>Completados</span><strong>{{ stats.completed_days }}</strong></article>
+  <article class="stat-card"><span>Pendientes</span><strong>{{ stats.pending_days }}</strong></article>
+  <article class="stat-card"><span>Avance</span><strong>{{ stats.completion }}%</strong></article>
+</section>
+
+{% if day %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Lectura actual</p>
+      <h3>{{ day.title or 'Sin titulo' }}</h3>
+      <p class="muted">{{ day.scripture or 'Sin capitulos definidos' }}</p>
+    </div>
+    <a class="button secondary" href="/days/{{ day.day_date }}">Editar dia</a>
+  </div>
+
+  <div class="checklist-list">
+    {% for item in day.checklist %}
+    <form class="check-row" method="post" action="/days/{{ day.day_date }}/checkins/{{ item.user_id }}">
+      <div>
+        <strong>{{ item.name }}</strong>
+        <p>{{ 'Ya lo leyo' if item.is_read else 'Pendiente de lectura' }}</p>
+      </div>
+      <input type="hidden" name="is_read" value="{{ 'false' if item.is_read else 'true' }}" />
+      <button class="button {{ 'secondary' if item.is_read else 'primary' }}" type="submit">
+        {{ 'Marcar no leido' if item.is_read else 'Marcar leido' }}
+      </button>
+    </form>
+    {% endfor %}
+  </div>
+
+  <div class="notes-box">
+    <p class="eyebrow">Notas</p>
+    <p>{{ day.notes or 'Sin notas todavia.' }}</p>
+  </div>
+</section>
+{% else %}
+<section class="panel">
+  <p>No hay lectura para este dia. Puedes crearla desde la vista de edicion.</p>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Calendario / lista</p>
+      <h3>Ultimos dias</h3>
+    </div>
+    <a class="button secondary" href="/days">Ver todos</a>
+  </div>
+  <div class="list-stack">
+    {% for item in recent_days %}
+    <a class="list-item" href="/days/{{ item.day_date }}">
+      <div>
+        <strong>{{ item.day_label }}</strong>
+        <p>{{ item.title or item.scripture or 'Sin titulo' }}</p>
+      </div>
+      <span class="pill {{ 'ok' if item.is_read else 'warn' }}">{{ 'Leido' if item.is_read else 'Pendiente' }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

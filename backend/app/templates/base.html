@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fbf8f4" />
+    <title>{{ page_title or 'CheckLectura' }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Lectura diaria</p>
+          <h1>CheckLectura</h1>
+        </div>
+        <div class="topbar-actions">
+          {% if current_user %}
+          <div class="status-pill">{{ current_user.name }}</div>
+          <form method="post" action="/logout">
+            <button class="button secondary" type="submit">Salir</button>
+          </form>
+          {% endif %}
+          <nav class="nav">
+            <a href="/plans" class="nav-link">Planes</a>
+          </nav>
+        </div>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>

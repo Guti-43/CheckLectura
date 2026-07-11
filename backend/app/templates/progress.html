@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% set page_title = "Progreso - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Progreso</p>
+    <h2>Avance general</h2>
+    <p class="muted">Resumen de lectura por dia y por persona.</p>
+  </div>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card"><span>Total dias</span><strong>{{ stats.total_days }}</strong></article>
+  <article class="stat-card"><span>Completados</span><strong>{{ stats.completed_days }}</strong></article>
+  <article class="stat-card"><span>Pendientes</span><strong>{{ stats.pending_days }}</strong></article>
+  <article class="stat-card"><span>Avance</span><strong>{{ stats.completion }}%</strong></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Por usuario</p>
+      <h3>Ritmo individual</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for user in stats.per_user %}
+    <article class="stat-card">
+      <span>{{ user.name }}</span>
+      <strong>{{ user.read_days }}/{{ stats.total_days }}</strong>
+      <p class="muted">{{ user.completion }}% completado</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Dias completados</p>
+      <h3>Ultimos leidos</h3>
+    </div>
+  </div>
+  <div class="chips">
+    {% for item in completed_days %}
+    <span class="pill ok">{{ item }}</span>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

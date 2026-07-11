@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% set page_title = "Plan - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Plan activo</p>
+    <h2>{{ plan.name }}</h2>
+    <p class="muted">{{ plan.description or 'Sin descripcion' }}</p>
+  </div>
+  <div class="status-pill">Inicio {{ plan.start_day_label }}</div>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card"><span>Capitulos por dia</span><strong>{{ plan.chapters_per_day }}</strong></article>
+  <article class="stat-card"><span>Capitulos totales Biblia</span><strong>{{ plan.bible_total_chapters }}</strong></article>
+  <article class="stat-card"><span>Fin estimado</span><strong>{{ plan.estimated_finish_label }}</strong></article>
+  <article class="stat-card"><span>Avance</span><strong>{{ completion }}%</strong></article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Participantes</p>
+      <h3>Quien forma parte de este plan</h3>
+    </div>
+  </div>
+  <div class="member-row big">
+    {% for member in members %}
+    <span class="member-chip">{{ member.name }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Resumen</p>
+      <h3>Rachas y constancia</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for member in per_member %}
+    <article class="stat-card">
+      <span>{{ member.name }}</span>
+      <strong>{{ member.current_streak }}</strong>
+      <p class="muted">Mejor racha: {{ member.best_streak }} dias</p>
+      <p class="muted">Saltados: {{ member.missed_days }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Dias del plan</p>
+      <h3>Capitulos y lectores</h3>
+    </div>
+  </div>
+  <div class="day-stack">
+    {% for day in days %}
+    <article class="day-card">
+      <form class="day-form" method="post" action="/plans/{{ plan.id }}/days/{{ day.id }}/save">
+        <input type="hidden" name="day_date" value="{{ day.day_date }}" />
+        <div class="day-head">
+          <div>
+            <strong>{{ day.day_label }}</strong>
+            <p>{{ day.title or 'Sin titulo' }}</p>
+          </div>
+          <span class="pill {{ 'ok' if day.is_read else 'warn' }}">{{ 'Leido' if day.is_read else 'Pendiente' }}</span>
+        </div>
+        <label>
+          <span>Titulo</span>
+          <input type="text" name="title" value="{{ day.title }}" />
+        </label>
+        <label>
+          <span>Capitulos</span>
+          <input type="text" name="scripture" value="{{ day.scripture }}" />
+        </label>
+        <label>
+          <span>Notas</span>
+          <textarea name="notes" rows="2">{{ day.notes }}</textarea>
+        </label>
+        <button class="button secondary" type="submit">Guardar dia</button>
+      </form>
+
+      <div class="checklist-list">
+        {% for item in day.checklist %}
+        <form class="check-row" method="post" action="/plans/{{ plan.id }}/days/{{ day.id }}/checkins/{{ item.user_id }}">
+          <div>
+            <strong>{{ item.name }}</strong>
+            <p>{{ 'Ya lo leyo' if item.is_read else 'Pendiente' }}</p>
+          </div>
+          <input type="hidden" name="is_read" value="{{ 'false' if item.is_read else 'true' }}" />
+          <button class="button {{ 'secondary' if item.is_read else 'primary' }}" type="submit">{{ 'Marcar no leido' if item.is_read else 'Marcar leido' }}</button>
+        </form>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Quien lee antes</p>
+      <h3>Primero en marcar</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for member in per_member %}
+    <article class="stat-card">
+      <span>{{ member.name }}</span>
+      <strong>{{ member.current_streak }}</strong>
+      <p class="muted">Primero {{ first_reader.get(member.id, 0) }} veces</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

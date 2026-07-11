@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% set page_title = "Planes - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">Tus planes</p>
+    <h2>Hola, {{ current_user.name }}</h2>
+    <p class="muted">Aqui tienes los planes en los que participas. Puedes entrar en cada uno y ver su progreso.</p>
+  </div>
+  <div class="status-pill">{{ plans|length }} planes</div>
+</section>
+
+<section class="grid plan-grid">
+  {% for plan in plans %}
+  <a class="plan-card" href="/plans/{{ plan.id }}">
+    <div class="plan-card-head">
+      <div>
+        <p class="eyebrow">Plan</p>
+        <h3>{{ plan.name }}</h3>
+      </div>
+      <span class="pill ok">{{ plan.completion }}%</span>
+    </div>
+    <p class="muted">{{ plan.description or 'Sin descripcion' }}</p>
+    <div class="plan-meta">
+      <span>Inicio {{ plan.start_day_label }}</span>
+      <span>Fin {{ plan.estimated_finish_label }}</span>
+      <span>{{ plan.chapters_per_day }} caps/dia</span>
+    </div>
+    <div class="member-row">
+      {% for member in plan.members %}
+      <span class="member-chip">{{ member.name }}</span>
+      {% endfor %}
+    </div>
+    <div class="plan-footer">
+      <strong>{{ plan.completed_days }}/{{ plan.total_days }} dias completados</strong>
+      <span>Entrar</span>
+    </div>
+  </a>
+  {% endfor %}
+</section>
+{% endblock %}

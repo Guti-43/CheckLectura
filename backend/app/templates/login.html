@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% set page_title = "Login - CheckLectura" %}
+{% block content %}
+<section class="login-shell">
+  <div class="hero-card login-card">
+    <div>
+      <p class="eyebrow">Acceso simple</p>
+      <h2>Entra con tu nombre</h2>
+      <p class="muted">Solo escribe Giada o Guti. Despues veras tus planes disponibles.</p>
+    </div>
+
+    {% if request.query_params.get('error') %}
+    <div class="login-error">No hemos reconocido ese nombre.</div>
+    {% endif %}
+
+    <form class="login-form" method="post" action="/login">
+      <label>
+        <span>Nombre</span>
+        <input type="text" name="name" placeholder="Giada o Guti" autocomplete="name" autofocus />
+      </label>
+      <button class="button primary" type="submit">Entrar</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

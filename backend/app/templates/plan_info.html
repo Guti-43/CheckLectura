@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% set page_title = "Info del plan - CheckLectura" %}
+{% block content %}
+<section class="hero-card calendar-hero">
+  <div>
+    <p class="eyebrow">Info del plan</p>
+    <h2>{{ plan.name }}</h2>
+    <p class="muted">Resumen general del plan, participantes, progreso y rachas.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button secondary" href="/plans/{{ plan.id }}">Volver al calendario</a>
+    <div class="status-pill">Inicio {{ plan.start_day_label }}</div>
+  </div>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card">
+    <span>Capitulos por dia</span>
+    <strong>{{ plan.chapters_per_day }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Capitulos totales Biblia</span>
+    <strong>{{ plan.bible_total_chapters }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Fin estimado</span>
+    <strong>{{ plan.estimated_finish_label }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Avance del plan</span>
+    <strong>{{ completion }}%</strong>
+  </article>
+</section>
+
+<section class="grid stats-grid">
+  <article class="stat-card">
+    <span>Inicio</span>
+    <strong>{{ plan.start_day_label }}</strong>
+    <p class="muted">Desde este dia empezo el plan</p>
+  </article>
+  <article class="stat-card">
+    <span>Total de dias</span>
+    <strong>{{ total_days }}</strong>
+    <p class="muted">Dias que ya estan cargados en la app</p>
+  </article>
+  <article class="stat-card">
+    <span>Leidos</span>
+    <strong>{{ completed_days }}</strong>
+    <p class="muted">Dias marcados como completados</p>
+  </article>
+  <article class="stat-card">
+    <span>Pendientes</span>
+    <strong>{{ pending_days }}</strong>
+    <p class="muted">Dias que aun no se han terminado</p>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Participantes</p>
+      <h3>Quien forma parte de este plan</h3>
+    </div>
+  </div>
+  <div class="member-row big">
+    {% for member in members %}
+    <span class="member-chip">{{ member.name }}</span>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Estadisticas</p>
+      <h3>Quien suele leer mas y quien se salta menos dias</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for member in per_member %}
+    <article class="stat-card">
+      <span>{{ member.name }}</span>
+      <strong>{{ member.current_streak }}</strong>
+      <p class="muted">Mejor racha: {{ member.best_streak }} dias</p>
+      <p class="muted">Dias leidos: {{ member.read_days }}</p>
+      <p class="muted">Dias saltados: {{ member.missed_days }}</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Primero en marcar</p>
+      <h3>Quien suele ir por delante</h3>
+    </div>
+  </div>
+  <div class="grid stats-grid">
+    {% for member in members %}
+    <article class="stat-card">
+      <span>{{ member.name }}</span>
+      <strong>{{ first_reader.get(member.id, 0) }}</strong>
+      <p class="muted">Veces que fue el primero en marcar</p>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if latest_day %}
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Ultimo dia cargado</p>
+      <h3>{{ latest_day.day_label }}</h3>
+    </div>
+    <span class="pill {{ 'ok' if latest_day.is_read else 'warn' }}">{{ 'Leido' if latest_day.is_read else 'Pendiente' }}</span>
+  </div>
+  <p class="muted">{{ latest_day.title or 'Sin titulo' }} - {{ latest_day.scripture or 'Sin pasaje' }}</p>
+  {% if latest_day.notes %}
+  <p class="muted">{{ latest_day.notes }}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

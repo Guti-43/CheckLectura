@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, Form, Request
@@ -10,7 +9,12 @@ from fastapi.templating import Jinja2Templates
 from .auth import SESSION_COOKIE, get_current_user
 from .db import get_conn, get_users
 from .repository import get_plan, get_plan_day, set_plan_checkin, upsert_plan_day
-from .services import build_plan_detail_context, build_plan_list_context, parse_day
+from .services import (
+    build_plan_calendar_context,
+    build_plan_detail_context,
+    build_plan_list_context,
+    parse_day,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / 'templates'))
@@ -69,18 +73,44 @@ def plans_page(request: Request):
 
 
 @router.get('/plans/{plan_id}')
-def plan_detail(request: Request, plan_id: int):
+def plan_detail(request: Request, plan_id: int, day: str = '', week: str = ''):
     current_user = get_current_user(request)
     if current_user is None:
         return _login_redirect()
     with get_conn() as conn:
+        user_plans = build_plan_list_context(conn, current_user['id'])['plans']
+        if plan_id not in {plan['id'] for plan in user_plans}:
+            return _plans_redirect()
+        current_plan = get_plan(conn, plan_id)
+        if current_plan is None:
+            return _plans_redirect()
+        context = build_plan_calendar_context(conn, plan_id, current_user['id'], day or None, week or None)
+    return templates.TemplateResponse(
+        'plan_detail.html',
+        {
+            'request': request,
+            'current_user': current_user,
+            'plans': user_plans,
+            **context,
+        },
+    )
+
+
+@router.get('/plans/{plan_id}/info')
+def plan_info(request: Request, plan_id: int):
+    current_user = get_current_user(request)
+    if current_user is None:
+        return _login_redirect()
+    with get_conn() as conn:
+        user_plans = build_plan_list_context(conn, current_user['id'])['plans']
+        if plan_id not in {plan['id'] for plan in user_plans}:
+            return _plans_redirect()
         current_plan = get_plan(conn, plan_id)
         if current_plan is None:
             return _plans_redirect()
         context = build_plan_detail_context(conn, plan_id)
-        user_plans = build_plan_list_context(conn, current_user['id'])['plans']
     return templates.TemplateResponse(
-        'plan_detail.html',
+        'plan_info.html',
         {
             'request': request,
             'current_user': current_user,
@@ -109,7 +139,30 @@ def save_plan_day(
             return _plans_redirect()
         target_day = parse_day(day_date) if day_date else current_day['day_date']
         upsert_plan_day(conn, plan_id, target_day, title.strip(), scripture.strip(), notes.strip())
-    return RedirectResponse(url=f'/plans/{plan_id}', status_code=303)
+    return RedirectResponse(url=f'/plans/{plan_id}/info', status_code=303)
+
+
+@router.post('/plans/{plan_id}/days/{day_id}/mine')
+def toggle_my_plan_checkin(
+    request: Request,
+    plan_id: int,
+    day_id: int,
+    is_read: bool = Form(False),
+    week: str = Form(''),
+    day: str = Form(''),
+) -> RedirectResponse:
+    current_user = get_current_user(request)
+    if current_user is None:
+        return _login_redirect()
+    with get_conn() as conn:
+        current_day = get_plan_day(conn, day_id)
+        if current_day is None:
+            return _plans_redirect()
+        set_plan_checkin(conn, day_id, current_user['id'], is_read)
+    redirect_url = f'/plans/{plan_id}?day={day or current_day["day_date"].isoformat()}'
+    if week:
+        redirect_url += f'&week={week}'
+    return RedirectResponse(url=redirect_url, status_code=303)
 
 
 @router.post('/plans/{plan_id}/days/{day_id}/checkins/{user_id}')
@@ -125,6 +178,4 @@ def toggle_plan_checkin(
         return _login_redirect()
     with get_conn() as conn:
         set_plan_checkin(conn, day_id, user_id, is_read)
-    return RedirectResponse(url=f'/plans/{plan_id}', status_code=303)
-
-
+    return RedirectResponse(url=f'/plans/{plan_id}/info', status_code=303)

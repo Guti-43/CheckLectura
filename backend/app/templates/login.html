@@ -6,7 +6,7 @@
     <div>
       <p class="eyebrow">Acceso simple</p>
       <h2>Entra con tu nombre</h2>
-      <p class="muted">Solo escribe Giada o Guti. Despues veras tus planes disponibles.</p>
+      <p class="muted">Escribe tu nombre. Despues veras tus planes disponibles.</p>
     </div>
 
     {% if request.query_params.get('error') %}
@@ -16,7 +16,7 @@
     <form class="login-form" method="post" action="/login">
       <label>
         <span>Nombre</span>
-        <input type="text" name="name" placeholder="Giada o Guti" autocomplete="name" autofocus />
+        <input type="text" name="name" placeholder="Nombre" autocomplete="name" autofocus />
       </label>
       <button class="button primary" type="submit">Entrar</button>
     </form>

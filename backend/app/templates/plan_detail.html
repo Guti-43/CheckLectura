@@ -1,32 +1,101 @@
 {% extends "base.html" %}
-{% set page_title = "Plan - CheckLectura" %}
+{% set page_title = "Calendario - CheckLectura" %}
 {% block content %}
-<section class="hero-card">
+<section class="hero-card calendar-hero">
   <div>
     <p class="eyebrow">Plan activo</p>
     <h2>{{ plan.name }}</h2>
-    <p class="muted">{{ plan.description or 'Sin descripcion' }}</p>
+    <p class="muted">Entra en el calendario semanal, mira lo de hoy y marca el dia como leido o no leido.</p>
   </div>
-  <div class="status-pill">Inicio {{ plan.start_day_label }}</div>
+  <div class="hero-actions">
+    <div class="status-pill">Semana {{ week_label }}</div>
+    <a class="button secondary" href="/plans/{{ plan.id }}/info">Ver info del plan</a>
+  </div>
 </section>
 
 <section class="grid stats-grid">
-  <article class="stat-card"><span>Capitulos por dia</span><strong>{{ plan.chapters_per_day }}</strong></article>
-  <article class="stat-card"><span>Capitulos totales Biblia</span><strong>{{ plan.bible_total_chapters }}</strong></article>
-  <article class="stat-card"><span>Fin estimado</span><strong>{{ plan.estimated_finish_label }}</strong></article>
-  <article class="stat-card"><span>Avance</span><strong>{{ completion }}%</strong></article>
+  <article class="stat-card">
+    <span>Tu progreso</span>
+    <strong>{{ current_user_completion }}%</strong>
+    <p class="muted">{{ current_user_read_days }} dias leidos</p>
+  </article>
+  <article class="stat-card">
+    <span>Racha actual</span>
+    <strong>{{ current_user_current_streak }}</strong>
+    <p class="muted">Mejor racha: {{ current_user_best_streak }} dias</p>
+  </article>
+  <article class="stat-card">
+    <span>Hoy</span>
+    <strong>{{ today_label }}</strong>
+    <p class="muted">Dia en curso del plan</p>
+  </article>
+  <article class="stat-card">
+    <span>Plan</span>
+    <strong>{{ plan.chapters_per_day }} caps</strong>
+    <p class="muted">Inicio {{ plan.start_day_label }}</p>
+  </article>
 </section>
 
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">Participantes</p>
-      <h3>Quien forma parte de este plan</h3>
+      <p class="eyebrow">Hoy</p>
+      <h3>Lo que toca leer hoy</h3>
+    </div>
+    {% if today_day %}
+    <span class="pill {{ 'ok' if today_day.my_is_read else 'warn' }}">{{ 'Leido' if today_day.my_is_read else 'Pendiente' }}</span>
+    {% else %}
+    <span class="pill warn">Sin lectura</span>
+    {% endif %}
+  </div>
+
+  {% if today_day %}
+  <div class="focus-card">
+    <div>
+      <p class="eyebrow">{{ today_day.day_label }}</p>
+      <h3>{{ today_day.title or 'Sin titulo' }}</h3>
+      <p class="muted">{{ today_day.scripture or 'Sin pasaje asignado' }}</p>
+    </div>
+    <form method="post" action="/plans/{{ plan.id }}/days/{{ today_day.id }}/mine" class="action-stack">
+      <input type="hidden" name="week" value="{{ week_start }}" />
+      <input type="hidden" name="day" value="{{ today_day.day_date }}" />
+      <input type="hidden" name="is_read" value="{{ 'false' if today_day.my_is_read else 'true' }}" />
+      <button class="button {{ 'secondary' if today_day.my_is_read else 'primary' }}" type="submit">
+        {{ 'Marcar no leido' if today_day.my_is_read else 'Marcar leido' }}
+      </button>
+    </form>
+  </div>
+  {% else %}
+  <p class="muted">Hoy no tienes una lectura programada en este plan.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <p class="eyebrow">Calendario semanal</p>
+      <h3>Selecciona un dia para revisar o cambiar su estado</h3>
+    </div>
+    <div class="week-nav">
+      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ prev_week }}&day={{ prev_week }}">Semana anterior</a>
+      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ next_week }}&day={{ next_week }}">Semana siguiente</a>
     </div>
   </div>
-  <div class="member-row big">
-    {% for member in members %}
-    <span class="member-chip">{{ member.name }}</span>
+
+  <div class="calendar-grid">
+    {% for day in calendar_days %}
+    <a class="calendar-day {{ day.status }} {{ 'today' if day.is_today else ' ' }} {{ 'selected' if day.is_selected else ' ' }}" href="/plans/{{ plan.id }}?day={{ day.date }}&week={{ week_start }}">
+      <span class="calendar-weekday">{{ day.weekday }}</span>
+      <strong>{{ day.label }}</strong>
+      <p>{{ day.title or 'Sin lectura' }}</p>
+      <span class="calendar-badge">
+        {% if day.has_plan_day %}
+          {{ 'Leido' if day.my_is_read else 'Pendiente' }}
+        {% else %}
+          Sin lectura
+        {% endif %}
+      </span>
+    </a>
     {% endfor %}
   </div>
 </section>
@@ -34,88 +103,35 @@
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">Resumen</p>
-      <h3>Rachas y constancia</h3>
+      <p class="eyebrow">Dia seleccionado</p>
+      <h3>{{ selected_day_label }}</h3>
     </div>
+    {% if selected_day %}
+    <span class="pill {{ 'ok' if selected_day.my_is_read else 'warn' }}">{{ 'Leido' if selected_day.my_is_read else 'Pendiente' }}</span>
+    {% endif %}
   </div>
-  <div class="grid stats-grid">
-    {% for member in per_member %}
-    <article class="stat-card">
-      <span>{{ member.name }}</span>
-      <strong>{{ member.current_streak }}</strong>
-      <p class="muted">Mejor racha: {{ member.best_streak }} dias</p>
-      <p class="muted">Saltados: {{ member.missed_days }}</p>
-    </article>
-    {% endfor %}
-  </div>
-</section>
 
-<section class="panel">
-  <div class="panel-head">
+  {% if selected_day %}
+  <div class="focus-card">
     <div>
-      <p class="eyebrow">Dias del plan</p>
-      <h3>Capitulos y lectores</h3>
+      <p class="eyebrow">{{ selected_day.day_label }}</p>
+      <h3>{{ selected_day.title or 'Sin titulo' }}</h3>
+      <p class="muted">{{ selected_day.scripture or 'Sin pasaje asignado' }}</p>
+      <p class="muted">{{ selected_day.notes or 'Sin notas para este dia' }}</p>
     </div>
+    <form method="post" action="/plans/{{ plan.id }}/days/{{ selected_day.id }}/mine" class="action-stack">
+      <input type="hidden" name="week" value="{{ week_start }}" />
+      <input type="hidden" name="day" value="{{ selected_day.day_date }}" />
+      <input type="hidden" name="is_read" value="{{ 'false' if selected_day.my_is_read else 'true' }}" />
+      <button class="button {{ 'secondary' if selected_day.my_is_read else 'primary' }}" type="submit">
+        {{ 'Marcar no leido' if selected_day.my_is_read else 'Marcar leido' }}
+      </button>
+    </form>
   </div>
-  <div class="day-stack">
-    {% for day in days %}
-    <article class="day-card">
-      <form class="day-form" method="post" action="/plans/{{ plan.id }}/days/{{ day.id }}/save">
-        <input type="hidden" name="day_date" value="{{ day.day_date }}" />
-        <div class="day-head">
-          <div>
-            <strong>{{ day.day_label }}</strong>
-            <p>{{ day.title or 'Sin titulo' }}</p>
-          </div>
-          <span class="pill {{ 'ok' if day.is_read else 'warn' }}">{{ 'Leido' if day.is_read else 'Pendiente' }}</span>
-        </div>
-        <label>
-          <span>Titulo</span>
-          <input type="text" name="title" value="{{ day.title }}" />
-        </label>
-        <label>
-          <span>Capitulos</span>
-          <input type="text" name="scripture" value="{{ day.scripture }}" />
-        </label>
-        <label>
-          <span>Notas</span>
-          <textarea name="notes" rows="2">{{ day.notes }}</textarea>
-        </label>
-        <button class="button secondary" type="submit">Guardar dia</button>
-      </form>
-
-      <div class="checklist-list">
-        {% for item in day.checklist %}
-        <form class="check-row" method="post" action="/plans/{{ plan.id }}/days/{{ day.id }}/checkins/{{ item.user_id }}">
-          <div>
-            <strong>{{ item.name }}</strong>
-            <p>{{ 'Ya lo leyo' if item.is_read else 'Pendiente' }}</p>
-          </div>
-          <input type="hidden" name="is_read" value="{{ 'false' if item.is_read else 'true' }}" />
-          <button class="button {{ 'secondary' if item.is_read else 'primary' }}" type="submit">{{ 'Marcar no leido' if item.is_read else 'Marcar leido' }}</button>
-        </form>
-        {% endfor %}
-      </div>
-    </article>
-    {% endfor %}
-  </div>
-</section>
-
-<section class="panel">
-  <div class="panel-head">
-    <div>
-      <p class="eyebrow">Quien lee antes</p>
-      <h3>Primero en marcar</h3>
-    </div>
-  </div>
-  <div class="grid stats-grid">
-    {% for member in per_member %}
-    <article class="stat-card">
-      <span>{{ member.name }}</span>
-      <strong>{{ member.current_streak }}</strong>
-      <p class="muted">Primero {{ first_reader.get(member.id, 0) }} veces</p>
-    </article>
-    {% endfor %}
-  </div>
+  {% else %}
+  <p class="muted">Este dia no tiene lectura programada todavia.</p>
+  {% endif %}
 </section>
 {% endblock %}
+
+

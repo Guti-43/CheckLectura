@@ -4,7 +4,7 @@ Web MVC para gestionar varios planes biblicos por usuario con acceso por nombre.
 
 ## Flujo
 
-- Inicias sesion escribiendo solo tu nombre: `Giada` o `Guti`.
+- Inicias sesion escribiendo solo tu nombre.
 - Despues ves la lista de planes en los que participas.
 - Cada plan tiene su propia pantalla con progreso, capitulos diarios, participantes, rachas y quien suele marcar antes.
 
@@ -34,9 +34,18 @@ Despues:
 ngrok http 5667
 ```
 
+## DBeaver
+
+Conecta a PostgreSQL con estos datos:
+
+- Host: `localhost`
+- Port: `5432`
+- Database: `checklectura`
+- User: `checklectura`
+- Password: `checklectura`
+
 ## Paginas
 
 - `/login`: acceso por nombre.
 - `/plans`: lista de planes del usuario.
 - `/plans/{id}`: detalle del plan.
-

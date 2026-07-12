@@ -5,14 +5,14 @@
   <div>
     <p class="eyebrow">Tus planes</p>
     <h2>Hola, {{ current_user.name }}</h2>
-    <p class="muted">Aqui tienes los planes en los que participas. Puedes entrar en cada uno y ver su progreso.</p>
+    <p class="muted">Aqui tienes los planes en los que participas. Entra al calendario para marcar lectura o abre la ficha para ver la info completa.</p>
   </div>
   <div class="status-pill">{{ plans|length }} planes</div>
 </section>
 
 <section class="grid plan-grid">
   {% for plan in plans %}
-  <a class="plan-card" href="/plans/{{ plan.id }}">
+  <article class="plan-card">
     <div class="plan-card-head">
       <div>
         <p class="eyebrow">Plan</p>
@@ -33,9 +33,12 @@
     </div>
     <div class="plan-footer">
       <strong>{{ plan.completed_days }}/{{ plan.total_days }} dias completados</strong>
-      <span>Entrar</span>
+      <div class="plan-card-actions">
+        <a class="button secondary" href="/plans/{{ plan.id }}">Calendario</a>
+        <a class="button primary" href="/plans/{{ plan.id }}/info">Info</a>
+      </div>
     </div>
-  </a>
+  </article>
   {% endfor %}
 </section>
 {% endblock %}

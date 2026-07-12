@@ -4,21 +4,25 @@
 <section class="login-shell">
   <div class="hero-card login-card">
     <div>
-      <p class="eyebrow">Acceso simple</p>
-      <h2>Entra con tu nombre</h2>
-      <p class="muted">Escribe tu nombre. Despues veras tus planes disponibles.</p>
+      <p class="eyebrow" data-i18n="login.kicker">Vamos allá</p>
+      <h2 data-i18n="login.title">¿Quién eres?</h2>
+      <p class="muted" data-i18n="login.copy">Escribe tu nombre y entramos a tus planes.</p>
     </div>
 
     {% if request.query_params.get('error') %}
-    <div class="login-error">No hemos reconocido ese nombre.</div>
+    <div class="login-error">{{ ('Contraseña incorrecta.' if request.query_params.get('error') == 'admin' else 'Ese nombre no nos suena. Prueba otra vez.') | t(request) }}</div>
     {% endif %}
 
     <form class="login-form" method="post" action="/login">
       <label>
-        <span>Nombre</span>
-        <input type="text" name="name" placeholder="Nombre" autocomplete="name" autofocus />
+        <span data-i18n="login.name">Nombre</span>
+        <input id="login-name" type="text" name="name" placeholder="Nombre" data-i18n-placeholder="placeholder.name" autocomplete="name" autofocus oninput="document.getElementById('admin-password').hidden = this.value.trim().toLowerCase() !== 'admin'" />
       </label>
-      <button class="button primary" type="submit">Entrar</button>
+      <label id="admin-password" hidden>
+        <span data-i18n="login.password">Contraseña</span>
+        <input type="password" name="password" autocomplete="current-password" />
+      </label>
+      <button class="button primary" type="submit" data-i18n="login.submit">Entrar</button>
     </form>
   </div>
 </section>

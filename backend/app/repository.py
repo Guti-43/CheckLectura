@@ -6,8 +6,11 @@ from typing import Any
 import psycopg
 
 from .db import (
+    create_plan,
+    delete_plan,
     ensure_plan_day,
     get_plan_checkins,
+    get_plan_day_notes,
     get_plan_day,
     get_plan_days,
     get_plan_members,
@@ -15,6 +18,8 @@ from .db import (
     get_plans,
     set_plan_checkin,
     upsert_plan_day,
+    upsert_plan_day_note,
+    update_plan,
 )
 
 
@@ -53,6 +58,7 @@ def plan_day_with_checklist(conn: psycopg.Connection[Any], plan_day_id: int) -> 
     if row is None:
         return None
     checklist = get_plan_checkins(conn, plan_day_id)
+    member_notes = get_plan_day_notes(conn, plan_day_id)
     data = {
         'id': row['id'],
         'plan_id': row['plan_id'],
@@ -61,6 +67,7 @@ def plan_day_with_checklist(conn: psycopg.Connection[Any], plan_day_id: int) -> 
         'title': row['title'],
         'scripture': row['scripture'],
         'notes': row['notes'],
+        'member_notes': member_notes,
         'updated_at': row['updated_at'].isoformat(),
         'checklist': checklist,
         'is_read': all(item['is_read'] for item in checklist) if checklist else False,
@@ -70,6 +77,7 @@ def plan_day_with_checklist(conn: psycopg.Connection[Any], plan_day_id: int) -> 
 
 def decorate_plan_day_row(row: dict[str, Any], conn: psycopg.Connection[Any]) -> dict[str, Any]:
     checklist = get_plan_checkins(conn, row['id'])
+    member_notes = get_plan_day_notes(conn, row['id'])
     return {
         'id': row['id'],
         'plan_id': row['plan_id'],
@@ -78,6 +86,7 @@ def decorate_plan_day_row(row: dict[str, Any], conn: psycopg.Connection[Any]) ->
         'title': row['title'],
         'scripture': row['scripture'],
         'notes': row['notes'],
+        'member_notes': member_notes,
         'updated_at': row['updated_at'].isoformat(),
         'checklist': checklist,
         'is_read': all(item['is_read'] for item in checklist) if checklist else False,
@@ -95,20 +104,21 @@ def compute_plan_metrics(conn: psycopg.Connection[Any], plan_id: int) -> dict[st
         return {}
     members = get_plan_members(conn, plan_id)
     days = plan_days_for_plan(conn, plan_id)
+    past_and_today = [day for day in days if date.fromisoformat(day['day_date']) <= date.today()]
 
-    total_days = len(days)
-    completed_days = sum(1 for day in days if day['is_read'])
+    total_days = len(past_and_today)
+    completed_days = sum(1 for day in past_and_today if day['is_read'])
     completion = round((completed_days / total_days) * 100, 1) if total_days else 0.0
 
     per_member = []
     for member in members:
         read_days = sum(
             1
-            for day in days
+            for day in past_and_today
             if any(checkin['user_id'] == member['id'] and checkin['is_read'] for checkin in day['checklist'])
         )
         missed_days = total_days - read_days
-        current_streak, best_streak = _streaks(days, member['id'])
+        current_streak, best_streak = _streaks(past_and_today, member['id'])
         per_member.append(
             {
                 'id': member['id'],
@@ -121,7 +131,7 @@ def compute_plan_metrics(conn: psycopg.Connection[Any], plan_id: int) -> dict[st
             }
         )
 
-    first_reader = _first_reader_counts(days, members)
+    first_reader = _first_reader_counts(past_and_today, members)
 
     return {
         'plan': plan,
@@ -137,9 +147,10 @@ def compute_plan_metrics(conn: psycopg.Connection[Any], plan_id: int) -> dict[st
 
 
 def _streaks(days: list[dict[str, Any]], user_id: int) -> tuple[int, int]:
+    past_and_today = [day for day in days if date.fromisoformat(day['day_date']) <= date.today()]
     flags = [
         any(checkin['user_id'] == user_id and checkin['is_read'] for checkin in day['checklist'])
-        for day in days
+        for day in past_and_today
     ]
     current = 0
     for flag in reversed(flags):

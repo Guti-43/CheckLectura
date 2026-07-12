@@ -11,6 +11,10 @@ from .repository import compute_plan_metrics, get_plan, get_user_plans
 
 BIBLE_TOTAL_CHAPTERS = 1189
 WEEKDAY_LABELS = ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom']
+MONTH_LABELS = [
+    'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+]
 
 
 def parse_day(value: str | date) -> date:
@@ -41,12 +45,17 @@ def _decorate_focus_day(day: dict[str, Any] | None, user_id: int) -> dict[str, A
         return None
     decorated = dict(day)
     decorated['my_is_read'] = _day_read_by_user(day, user_id)
+    decorated['my_note'] = next(
+        (note['notes'] for note in day.get('member_notes', []) if note['user_id'] == user_id),
+        '',
+    )
     decorated['has_plan_day'] = True
     return decorated
 
 
 def _streaks_for_user(days: list[dict[str, Any]], user_id: int) -> tuple[int, int]:
-    flags = [_day_read_by_user(day, user_id) for day in days]
+    past_and_today = [day for day in days if parse_day(day['day_date']) <= date.today()]
+    flags = [_day_read_by_user(day, user_id) for day in past_and_today]
     current = 0
     for flag in reversed(flags):
         if not flag:
@@ -69,9 +78,24 @@ def build_plan_list_context(conn: psycopg.Connection[Any], user_id: int) -> dict
     decorated = []
     for plan in plans:
         metrics = compute_plan_metrics(conn, plan['id'])
+        members = sorted(metrics['members'], key=lambda member: member['id'] != user_id)
         start_day = plan['start_day']
         estimated_total_days = ceil(plan['bible_total_chapters'] / plan['chapters_per_day'])
         estimated_finish = start_day + timedelta(days=estimated_total_days - 1)
+        elapsed_days = min(max((date.today() - start_day).days + 1, 0), estimated_total_days)
+        member_ids = {member['id'] for member in metrics['members']}
+        read_by_members = sum(
+            1
+            for day in metrics['days']
+            if start_day <= parse_day(day['day_date']) <= date.today()
+            for checkin in day['checklist']
+            if checkin['user_id'] in member_ids and checkin['is_read']
+        )
+        average_completion = (
+            round((read_by_members / (elapsed_days * len(member_ids))) * 100, 1)
+            if elapsed_days and member_ids
+            else 0.0
+        )
         selected_day = metrics['days'][0] if metrics['days'] else None
         decorated.append(
             {
@@ -84,10 +108,11 @@ def build_plan_list_context(conn: psycopg.Connection[Any], user_id: int) -> dict
                 'estimated_finish_label': pretty_day(estimated_finish),
                 'chapters_per_day': plan['chapters_per_day'],
                 'bible_total_chapters': plan['bible_total_chapters'],
-                'completion': metrics['completion'],
+                'completion': average_completion,
                 'completed_days': metrics['completed_days'],
                 'total_days': metrics['total_days'],
-                'members': metrics['members'],
+                'members': members,
+                'member_ids': [member['id'] for member in members],
                 'selected_row': selected_day,
             }
         )
@@ -109,14 +134,28 @@ def build_plan_calendar_context(
     days = metrics['days']
     day_by_date = {parse_day(day['day_date']): day for day in days}
     today = date.today()
-    selected_day = _safe_parse_day(selected_day_value, today)
+    selected_day = max(_safe_parse_day(selected_day_value, today), plan['start_day'])
     week_anchor = _safe_parse_day(week_value, selected_day)
+    week_anchor = max(week_anchor, plan['start_day'])
     week_start = week_anchor - timedelta(days=week_anchor.weekday())
     week_end = week_start + timedelta(days=6)
+    first_week_start = plan['start_day'] - timedelta(days=plan['start_day'].weekday())
 
-    current_user_read_days = sum(1 for day in days if _day_read_by_user(day, current_user_id))
+    past_and_today = [day for day in days if parse_day(day['day_date']) <= today]
+    current_user_read_days = sum(1 for day in past_and_today if _day_read_by_user(day, current_user_id))
     current_user_completion = round((current_user_read_days / metrics['total_days']) * 100, 1) if metrics['total_days'] else 0.0
-    current_user_current_streak, current_user_best_streak = _streaks_for_user(days, current_user_id)
+    current_user_current_streak, current_user_best_streak = _streaks_for_user(past_and_today, current_user_id)
+    unread_days = []
+    for day in past_and_today:
+        if _day_read_by_user(day, current_user_id):
+            continue
+        day_date = parse_day(day['day_date'])
+        unread_days.append(
+            {
+                **day,
+                'week_start': (day_date - timedelta(days=day_date.weekday())).isoformat(),
+            }
+        )
 
     calendar_days: list[dict[str, Any]] = []
     for offset in range(7):
@@ -136,7 +175,15 @@ def build_plan_calendar_context(
                 'title': plan_day['title'] if plan_day else '',
                 'scripture': plan_day['scripture'] if plan_day else '',
                 'my_is_read': user_is_read,
-                'status': 'read' if user_is_read else 'pending' if plan_day else 'empty',
+                'status': (
+                    'read'
+                    if user_is_read
+                    else 'pending'
+                    if plan_day and current_day <= today
+                    else 'future'
+                    if plan_day
+                    else 'empty'
+                ),
             }
         )
 
@@ -160,7 +207,9 @@ def build_plan_calendar_context(
         'week_end': week_end.isoformat(),
         'prev_week': (week_start - timedelta(days=7)).isoformat(),
         'next_week': (week_start + timedelta(days=7)).isoformat(),
+        'can_go_prev_week': week_start > first_week_start,
         'week_label': f'{pretty_day(week_start)} - {pretty_day(week_end)}',
+        'calendar_month_label': f'{MONTH_LABELS[selected_day.month - 1]} {selected_day.year}',
         'calendar_days': calendar_days,
         'selected_day': selected_plan_day,
         'selected_day_label': pretty_day(selected_day),
@@ -169,6 +218,7 @@ def build_plan_calendar_context(
         'today_label': pretty_day(today),
         'current_user_read_days': current_user_read_days,
         'current_user_pending_days': metrics['total_days'] - current_user_read_days,
+        'unread_days': unread_days,
         'current_user_completion': current_user_completion,
         'current_user_current_streak': current_user_current_streak,
         'current_user_best_streak': current_user_best_streak,
@@ -210,7 +260,3 @@ def build_plan_detail_context(conn: psycopg.Connection[Any], plan_id: int) -> di
         'first_reader': metrics['first_reader'],
         'latest_day': latest_day,
     }
-
-
-
-

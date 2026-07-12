@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% set page_title = "Admin - CheckLectura" %}
+{% block content %}
+<section class="hero-card">
+  <div>
+    <p class="eyebrow">🛠️ Admin</p>
+    <h2 data-i18n="admin.title">Gestiona a la gente</h2>
+    <p class="muted" data-i18n="admin.copy">Aquí puedes crear, cambiar o eliminar usuarios.</p>
+  </div>
+  <div class="status-pill">{{ users|length }} {{ ('usuario' if users|length == 1 else 'usuarios') | t(request) }}</div>
+</section>
+
+<section class="panel">
+  <p class="eyebrow" data-i18n="admin.new">Nuevo usuario</p>
+  <form method="post" action="/admin/users/create" class="admin-create-form">
+    <input name="name" required placeholder="Nombre" data-i18n-placeholder="placeholder.name" />
+    <button class="button primary" type="submit" data-i18n="admin.add">+ Añadir</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><div><p class="eyebrow" data-i18n="admin.users">Usuarios</p><h3 data-i18n="admin.users">Usuarios</h3></div></div>
+  <div class="admin-user-list">
+    {% for user in users %}
+    <form method="post" action="/admin/users/{{ user.id }}/update" class="admin-user-row">
+      <span class="member-chip">👤</span>
+      <input name="name" value="{{ user.name }}" required />
+      <button class="button secondary" type="submit" data-i18n="admin.save">Guardar</button>
+      <button class="icon-button danger" type="submit" formaction="/admin/users/{{ user.id }}/delete" formmethod="post" aria-label="Eliminar a {{ user.name }}">🗑</button>
+    </form>
+    {% else %}
+    <p class="muted">Todavía no hay usuarios.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

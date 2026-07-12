@@ -8,22 +8,40 @@
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
   <body>
+    <div class="language-selector">
+      <details class="language-popover">
+        <summary id="language-trigger" aria-label="Elegir idioma">🇪🇸</summary>
+        <div class="language-menu" aria-label="Idiomas">
+          <button type="button" data-language="es" data-flag="🇪🇸">🇪🇸 Español</button>
+          <button type="button" data-language="it" data-flag="🇮🇹">🇮🇹 Italiano</button>
+          <button type="button" data-language="en" data-flag="🇬🇧">🇬🇧 English</button>
+        </div>
+      </details>
+    </div>
     <div class="page-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Lectura diaria</p>
-          <h1>CheckLectura</h1>
+          <p class="eyebrow">Un día, unas páginas</p>
+          <h1><span class="fun-icon" aria-hidden="true">📖</span> CheckLectura</h1>
         </div>
         <div class="topbar-actions">
           {% if current_user %}
           <div class="status-pill">{{ current_user.name }}</div>
+          {% if current_user.is_admin %}
+          <nav class="nav">
+            <a href="/admin" class="nav-link" data-i18n="nav.admin">Admin</a>
+          </nav>
+          {% else %}
+          <nav class="nav">
+            {% if request.url.path != '/plans' %}
+            <a href="/plans" class="nav-link" data-i18n="nav.plans">Planes</a>
+            {% endif %}
+          </nav>
+          {% endif %}
           <form method="post" action="/logout">
-            <button class="button secondary" type="submit">Salir</button>
+            <button class="button secondary" type="submit" data-i18n="nav.exit">Salir</button>
           </form>
           {% endif %}
-          <nav class="nav">
-            <a href="/plans" class="nav-link">Planes</a>
-          </nav>
         </div>
       </header>
 
@@ -31,5 +49,102 @@
         {% block content %}{% endblock %}
       </main>
     </div>
+    <script>
+      const translations = {
+        es: { 'nav.exit': 'Salir', 'nav.admin': 'Admin', 'nav.plans': 'Planes', 'login.kicker': 'Vamos allá', 'login.title': '¿Quién eres?', 'login.copy': 'Escribe tu nombre y entramos a tus planes.', 'login.name': 'Nombre', 'login.password': 'Contraseña', 'login.submit': 'Entrar', 'plans.kicker': '🗂️ Tus planes', 'plans.new': '+ Nuevo plan', 'plans.enter': '🗓️ Entrar al plan', 'plans.more': '✨ Ver más', 'plans.members': '¿Quién se apunta?', 'plans.create': 'Crear plan', 'plans.save': 'Guardar cambios', 'common.cancel': 'Cancelar', 'placeholder.name': 'Nombre', 'placeholder.planName': 'Ej. Lectura de verano', 'placeholder.optional': 'Opcional', 'admin.title': 'Gestiona a la gente', 'admin.copy': 'Aquí puedes crear, cambiar o eliminar usuarios.', 'admin.new': 'Nuevo usuario', 'admin.add': '+ Añadir', 'admin.users': 'Usuarios', 'admin.save': 'Guardar' },
+        it: { 'nav.exit': 'Esci', 'nav.admin': 'Admin', 'nav.plans': 'Piani', 'login.kicker': 'Si parte', 'login.title': 'Chi sei?', 'login.copy': 'Scrivi il tuo nome per entrare nei tuoi piani.', 'login.name': 'Nome', 'login.password': 'Password', 'login.submit': 'Entra', 'plans.kicker': '🗂️ I tuoi piani', 'plans.new': '+ Nuovo piano', 'plans.enter': '🗓️ Entra nel piano', 'plans.more': '✨ Vedi altro', 'plans.members': 'Chi partecipa?', 'plans.create': 'Crea piano', 'plans.save': 'Salva modifiche', 'common.cancel': 'Annulla', 'placeholder.name': 'Nome', 'placeholder.planName': 'Es. Lettura estiva', 'placeholder.optional': 'Facoltativo', 'admin.title': 'Gestisci le persone', 'admin.copy': 'Qui puoi creare, modificare o eliminare utenti.', 'admin.new': 'Nuovo utente', 'admin.add': '+ Aggiungi', 'admin.users': 'Utenti', 'admin.save': 'Salva' },
+        en: { 'nav.exit': 'Log out', 'nav.admin': 'Admin', 'nav.plans': 'Plans', 'login.kicker': 'Let’s go', 'login.title': 'Who are you?', 'login.copy': 'Enter your name to access your plans.', 'login.name': 'Name', 'login.password': 'Password', 'login.submit': 'Log in', 'plans.kicker': '🗂️ Your plans', 'plans.new': '+ New plan', 'plans.enter': '🗓️ Enter plan', 'plans.more': '✨ See more', 'plans.members': 'Who is joining?', 'plans.create': 'Create plan', 'plans.save': 'Save changes', 'common.cancel': 'Cancel', 'placeholder.name': 'Name', 'placeholder.planName': 'E.g. Summer reading', 'placeholder.optional': 'Optional', 'admin.title': 'Manage people', 'admin.copy': 'Create, edit, or remove users here.', 'admin.new': 'New user', 'admin.add': '+ Add', 'admin.users': 'Users', 'admin.save': 'Save' }
+      };
+      const plainTextTranslations = {
+        it: {
+          'Ese nombre no nos suena. Prueba otra vez.': 'Questo nome non ci risulta. Riprova.',
+          'Contraseña incorrecta.': 'Password non corretta.',
+          'Ver detalles': 'Vedi dettagli', 'Tu lectura de hoy': 'La tua lettura di oggi',
+          'Calendario semanal': 'Calendario settimanale', 'Elige un día': 'Scegli un giorno',
+          'Para ponerte al día': 'Per rimetterti in pari', 'Día seleccionado': 'Giorno selezionato',
+          'Notas del día': 'Note del giorno', 'Guardar nota': 'Salva nota', 'Marcar leido': 'Segna come letto',
+          'Marcar no leido': 'Segna come non letto', 'Pendiente': 'In attesa', 'Leido': 'Letto',
+          'Sin lectura': 'Nessuna lettura', 'Vas al día. Buen trabajo.': 'Sei in pari. Ottimo lavoro.',
+          'Editar plan': 'Modifica piano', 'Plan nuevo': 'Nuovo piano', 'Añadir personas': 'Aggiungi persone',
+          'Borrar plan': 'Elimina piano', '¿Seguro?': 'Sei sicuro?', 'Sí, borrar': 'Sì, elimina',
+          'Capítulos al día': 'Capitoli al giorno', 'Inicio': 'Inizio', 'Fin': 'Fine', 'Plan': 'Piano',
+          'Tu racha': 'La tua serie', 'Lo que llevas': 'I tuoi progressi', 'Hoy': 'Oggi',
+          'Plan activo': 'Piano attivo', 'Mira qué toca, marca cuando acabes y listo.': 'Guarda cosa c’è da leggere, segna quando finisci e basta.',
+          'Toca un día para ver qué tocaba.': 'Tocca un giorno per vedere cosa c’era da leggere.', 'Ver detalles': 'Vedi dettagli',
+          '📚 Lo que llevas': '📚 I tuoi progressi', '🔥 Tu racha': '🔥 La tua serie', '☀️ Hoy': '☀️ Oggi', '🎯 Plan': '🎯 Piano',
+          '📖 Tu lectura de hoy': '📖 La tua lettura di oggi', '🗓️ Calendario semanal': '🗓️ Calendario settimanale',
+          '🧩 Para ponerte al día': '🧩 Per rimetterti in pari', '🔎 Día seleccionado': '🔎 Giorno selezionato'
+        },
+        en: {
+          'Ese nombre no nos suena. Prueba otra vez.': 'We do not recognize that name. Try again.',
+          'Contraseña incorrecta.': 'Incorrect password.',
+          'Ver detalles': 'View details', 'Tu lectura de hoy': 'Your reading for today',
+          'Calendario semanal': 'Weekly calendar', 'Elige un día': 'Choose a day',
+          'Para ponerte al día': 'Catch up', 'Día seleccionado': 'Selected day',
+          'Notas del día': 'Day notes', 'Guardar nota': 'Save note', 'Marcar leido': 'Mark as read',
+          'Marcar no leido': 'Mark as unread', 'Pendiente': 'Pending', 'Leido': 'Read',
+          'Sin lectura': 'No reading', 'Vas al día. Buen trabajo.': 'You are all caught up. Great job.',
+          'Editar plan': 'Edit plan', 'Plan nuevo': 'New plan', 'Añadir personas': 'Add people',
+          'Borrar plan': 'Delete plan', '¿Seguro?': 'Are you sure?', 'Sí, borrar': 'Yes, delete',
+          'Capítulos al día': 'Chapters per day', 'Inicio': 'Start', 'Fin': 'End', 'Plan': 'Plan',
+          'Tu racha': 'Your streak', 'Lo que llevas': 'Your progress', 'Hoy': 'Today',
+          'Plan activo': 'Active plan', 'Mira qué toca, marca cuando acabes y listo.': 'See what is up, mark it when you finish, and that’s it.',
+          'Toca un día para ver qué tocaba.': 'Tap a day to see what was planned.', 'Ver detalles': 'View details',
+          '📚 Lo que llevas': '📚 Your progress', '🔥 Tu racha': '🔥 Your streak', '☀️ Hoy': '☀️ Today', '🎯 Plan': '🎯 Plan',
+          '📖 Tu lectura de hoy': '📖 Your reading for today', '🗓️ Calendario semanal': '🗓️ Weekly calendar',
+          '🧩 Para ponerte al día': '🧩 Catch up', '🔎 Día seleccionado': '🔎 Selected day'
+        }
+      };
+      const languageTrigger = document.getElementById('language-trigger');
+      const languagePopover = document.querySelector('.language-popover');
+      const selectedLanguage = localStorage.getItem('checklectura-language') || 'es';
+      const flags = { es: '🇪🇸', it: '🇮🇹', en: '🇬🇧' };
+      const originalTextNodes = new WeakMap();
+      const monthTranslations = {
+        it: { enero: 'gennaio', febrero: 'febbraio', marzo: 'marzo', abril: 'aprile', mayo: 'maggio', junio: 'giugno', julio: 'luglio', agosto: 'agosto', septiembre: 'settembre', octubre: 'ottobre', noviembre: 'novembre', diciembre: 'dicembre' },
+        en: { enero: 'January', febrero: 'February', marzo: 'March', abril: 'April', mayo: 'May', junio: 'June', julio: 'July', agosto: 'August', septiembre: 'September', octubre: 'October', noviembre: 'November', diciembre: 'December' }
+      };
+      function applyLanguage(language) {
+        const dictionary = translations[language] || translations.es;
+        const plainDictionary = plainTextTranslations[language] || {};
+        languageTrigger.textContent = flags[language] || flags.es;
+        document.documentElement.lang = language;
+        document.querySelectorAll('[data-i18n]').forEach((element) => {
+          if (dictionary[element.dataset.i18n]) element.textContent = dictionary[element.dataset.i18n];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+          if (dictionary[element.dataset.i18nPlaceholder]) element.placeholder = dictionary[element.dataset.i18nPlaceholder];
+        });
+        document.querySelectorAll('[data-calendar-month]').forEach((element) => {
+          const parts = element.textContent.trim().split(' ');
+          const month = parts[0].toLowerCase();
+          const translatedMonth = (monthTranslations[language] || {})[month] || month;
+          element.textContent = translatedMonth.charAt(0).toUpperCase() + translatedMonth.slice(1) + (parts[1] ? ' ' + parts[1] : '');
+        });
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) textNodes.push(walker.currentNode);
+        textNodes.forEach((node) => {
+          if (node.parentElement.closest('script, style')) return;
+          const source = originalTextNodes.get(node) || node.nodeValue.trim();
+          originalTextNodes.set(node, source);
+          const leading = node.nodeValue.match(/^\s*/)[0];
+          const trailing = node.nodeValue.match(/\s*$/)[0];
+          node.nodeValue = leading + (plainDictionary[source] || source) + trailing;
+        });
+      }
+      applyLanguage(selectedLanguage);
+      document.querySelectorAll('.language-menu button').forEach((button) => {
+        button.addEventListener('click', () => {
+          const language = button.dataset.language;
+          localStorage.setItem('checklectura-language', language);
+          document.cookie = 'checklectura-language=' + language + '; path=/; max-age=31536000; SameSite=Lax';
+          window.location.reload();
+        });
+      });
+      document.addEventListener('click', (event) => {
+        if (!languagePopover.contains(event.target)) languagePopover.open = false;
+      });
+    </script>
   </body>
 </html>

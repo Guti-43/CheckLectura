@@ -3,19 +3,56 @@
 {% block content %}
 <section class="hero-card">
   <div>
-    <p class="eyebrow">Tus planes</p>
+    <p class="eyebrow" data-i18n="plans.kicker">🗂️ Tus planes</p>
     <h2>Hola, {{ current_user.name }}</h2>
-    <p class="muted">Aqui tienes los planes en los que participas. Entra al calendario para marcar lectura o abre la ficha para ver la info completa.</p>
+    <p class="muted">Elige un plan, marca lo que ya llevas y sigue a tu ritmo.</p>
   </div>
-  <div class="status-pill">{{ plans|length }} planes</div>
+  <div class="status-pill">{{ plans|length }} {{ ('plan' if plans|length == 1 else 'planes') | t(request) }}</div>
+  <button class="button primary" type="button" onclick="document.getElementById('create-plan').showModal()" data-i18n="plans.new">+ Nuevo plan</button>
 </section>
+
+<dialog class="plan-dialog" id="create-plan">
+  <form method="post" action="/plans/create" class="plan-form">
+    <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('create-plan').close()">×</button>
+    <p class="eyebrow">Plan nuevo</p>
+    <h3>Montamos un plan</h3>
+    <label>Nombre <input name="name" required placeholder="Ej. Lectura de verano" data-i18n-placeholder="placeholder.planName" /></label>
+    <label>Descripción <textarea name="description" rows="2" placeholder="Opcional" data-i18n-placeholder="placeholder.optional"></textarea></label>
+    <div class="form-grid">
+      <label>Inicio <input type="date" name="start_day" value="{{ today_iso }}" required /></label>
+      <label>Capítulos al día <input type="number" name="chapters_per_day" min="1" value="3" required /></label>
+    </div>
+    <div class="member-picker" id="create-member-picker">
+      <span class="member-picker-title" data-i18n="plans.members">¿Quién se apunta?</span>
+      <input type="hidden" name="member_ids" value="{{ current_user.id }}" />
+      <span class="member-chip">{{ current_user.name }}</span>
+      <details class="member-popover">
+        <summary aria-label="Añadir personas">+</summary>
+        <div class="member-popup">
+          <strong>Añadir personas</strong>
+          <div class="member-popup-options">
+          {% for user in users if user.id != current_user.id %}
+          <button class="member-option" type="button" data-user-id="{{ user.id }}" data-user-name="{{ user.name }}" onclick="addPlanMember(this, 'create-member-picker')">+ {{ user.name }}</button>
+          {% else %}
+          <p class="muted">No hay más personas.</p>
+          {% endfor %}
+          </div>
+        </div>
+      </details>
+    </div>
+    <div class="actions dialog-actions">
+      <button class="button secondary" type="button" onclick="document.getElementById('create-plan').close()" data-i18n="common.cancel">Cancelar</button>
+      <button class="button primary" type="submit" data-i18n="plans.create">Crear plan</button>
+    </div>
+  </form>
+</dialog>
 
 <section class="grid plan-grid">
   {% for plan in plans %}
   <article class="plan-card">
     <div class="plan-card-head">
       <div>
-        <p class="eyebrow">Plan</p>
+        <p class="eyebrow">📚 Plan</p>
         <h3>{{ plan.name }}</h3>
       </div>
       <span class="pill ok">{{ plan.completion }}%</span>
@@ -24,7 +61,7 @@
     <div class="plan-meta">
       <span>Inicio {{ plan.start_day_label }}</span>
       <span>Fin {{ plan.estimated_finish_label }}</span>
-      <span>{{ plan.chapters_per_day }} caps/dia</span>
+      <span>{{ plan.chapters_per_day }} {{ 'caps/dia' | t(request) }}</span>
     </div>
     <div class="member-row">
       {% for member in plan.members %}
@@ -32,13 +69,123 @@
       {% endfor %}
     </div>
     <div class="plan-footer">
-      <strong>{{ plan.completed_days }}/{{ plan.total_days }} dias completados</strong>
-      <div class="plan-card-actions">
-        <a class="button secondary" href="/plans/{{ plan.id }}">Calendario</a>
-        <a class="button primary" href="/plans/{{ plan.id }}/info">Info</a>
-      </div>
+      <strong>{{ plan.completed_days }}/{{ plan.total_days }} {{ 'dias completados' | t(request) }}</strong>
+
     </div>
+    <div class="plan-card-actions">
+        <a class="button secondary" href="/plans/{{ plan.id }}" data-i18n="plans.enter">🗓️ Entrar al plan</a>
+        <a class="button primary" href="/plans/{{ plan.id }}/info" data-i18n="plans.more">✨ Ver más</a>
+        <button class="icon-button" type="button" aria-label="Editar {{ plan.name }}" title="Editar plan" onclick="document.getElementById('edit-plan-{{ plan.id }}').showModal()">✎</button>
+        <button class="icon-button danger" type="button" aria-label="Borrar {{ plan.name }}" title="Borrar plan" onclick="document.getElementById('delete-plan-{{ plan.id }}').showModal()">🗑</button>
+      </div>
+      <dialog class="delete-dialog" id="delete-plan-{{ plan.id }}">
+          <div class="delete-dialog-content">
+            <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('delete-plan-{{ plan.id }}').close()">×</button>
+            <p class="eyebrow">¿Seguro?</p>
+            <h3>Vas a borrar “{{ plan.name }}”</h3>
+            <p class="muted">También se borrarán sus lecturas y notas. Esto no se puede deshacer.</p>
+            <div class="actions delete-dialog-actions">
+              <form method="dialog">
+                <button class="button secondary" type="submit">Cancelar</button>
+              </form>
+              <form method="post" action="/plans/{{ plan.id }}/delete">
+                <button class="button danger-button" type="submit">Sí, borrar</button>
+              </form>
+            </div>
+          </div>
+      </dialog>
+      <dialog class="plan-dialog" id="edit-plan-{{ plan.id }}">
+          <form method="post" action="/plans/{{ plan.id }}/update" class="plan-form">
+            <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()">×</button>
+            <p class="eyebrow">Editar plan</p>
+            <h3>Haz los cambios que quieras</h3>
+            <label>Nombre <input name="name" value="{{ plan.name }}" required /></label>
+            <label>Descripción <textarea name="description" rows="2">{{ plan.description }}</textarea></label>
+            <div class="form-grid">
+              <label>Inicio <input type="date" name="start_day" value="{{ plan.start_day }}" required /></label>
+              <label>Capítulos al día <input type="number" name="chapters_per_day" min="1" value="{{ plan.chapters_per_day }}" required /></label>
+            </div>
+            <div class="member-picker" id="edit-member-picker-{{ plan.id }}">
+              <span class="member-picker-title" data-i18n="plans.members">¿Quién se apunta?</span>
+              {% for member in plan.members %}
+              <span class="member-chip editable-member" data-user-id="{{ member.id }}" data-user-name="{{ member.name }}">
+                <input type="hidden" name="member_ids" value="{{ member.id }}" />
+                {{ member.name }}
+                {% if member.id != current_user.id %}
+                <button class="member-remove" type="button" aria-label="Quitar a {{ member.name }}" onclick="removePlanMember(this, 'edit-member-picker-{{ plan.id }}')">×</button>
+                {% endif %}
+              </span>
+              {% endfor %}
+              <details class="member-popover">
+                <summary aria-label="Añadir personas">+</summary>
+                <div class="member-popup">
+                  <strong>Añadir personas</strong>
+                  <div class="member-popup-options">
+                  {% for user in users if user.id not in plan.member_ids %}
+                  <button class="member-option" type="button" data-user-id="{{ user.id }}" data-user-name="{{ user.name }}" onclick="addPlanMember(this, 'edit-member-picker-{{ plan.id }}')">+ {{ user.name }}</button>
+                  {% else %}
+                  <p class="muted">Ya están todos en el plan.</p>
+                  {% endfor %}
+                  </div>
+                </div>
+              </details>
+            </div>
+            <div class="actions dialog-actions">
+              <button class="button secondary" type="button" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()" data-i18n="common.cancel">Cancelar</button>
+              <button class="button primary" type="submit" data-i18n="plans.save">Guardar cambios</button>
+            </div>
+          </form>
+      </dialog>
   </article>
   {% endfor %}
 </section>
+<script>
+  function addPlanMember(option, pickerId) {
+    const picker = document.getElementById(pickerId);
+    const userId = option.dataset.userId;
+    const userName = option.dataset.userName;
+    if (picker.querySelector('.editable-member[data-user-id="' + userId + '"]')) return;
+    const chip = document.createElement('span');
+    chip.className = 'member-chip editable-member';
+    chip.dataset.userId = userId;
+    chip.dataset.userName = userName;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'member_ids';
+    input.value = userId;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'member-remove';
+    remove.setAttribute('aria-label', 'Quitar a ' + userName);
+    remove.textContent = '×';
+    remove.addEventListener('click', () => removePlanMember(remove, pickerId));
+    chip.append(input, document.createTextNode(userName), remove);
+    picker.insertBefore(chip, picker.querySelector('.member-popover'));
+    option.remove();
+    picker.querySelector('.member-popover').open = false;
+  }
+
+  function removePlanMember(button, pickerId) {
+    const picker = document.getElementById(pickerId);
+    const chip = button.closest('.editable-member');
+    const options = picker.querySelector('.member-popup-options');
+    const emptyMessage = options.querySelector('.muted');
+    if (emptyMessage) emptyMessage.remove();
+    const option = document.createElement('button');
+    option.type = 'button';
+    option.className = 'member-option';
+    option.dataset.userId = chip.dataset.userId;
+    option.dataset.userName = chip.dataset.userName;
+    option.textContent = '+ ' + chip.dataset.userName;
+    option.addEventListener('click', () => addPlanMember(option, pickerId));
+    options.append(option);
+    chip.remove();
+  }
+
+  document.addEventListener('click', (event) => {
+    document.querySelectorAll('.member-popover[open]').forEach((popover) => {
+      if (!popover.contains(event.target)) popover.open = false;
+    });
+  });
+</script>
 {% endblock %}

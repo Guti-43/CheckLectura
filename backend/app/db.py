@@ -269,7 +269,7 @@ def init_db() -> None:
 
         _backfill_checkin_dates_for_streaks(conn)
         _backfill_user_passwords(conn)
-        _fill_empty_plan_days(conn)
+        _fill_missing_plan_days(conn)
 
 
 def seed_bible_books(conn: psycopg.Connection[Any]) -> None:
@@ -287,14 +287,16 @@ def seed_bible_books(conn: psycopg.Connection[Any]) -> None:
     conn.commit()
 
 
-def _fill_empty_plan_days(conn: psycopg.Connection[Any]) -> None:
-    """Populate legacy plans that were created before automatic readings."""
+def _fill_missing_plan_days(conn: psycopg.Connection[Any]) -> None:
+    """Complete legacy plans with their missing scheduled readings.
+
+    Earlier versions seeded only the first few days of the demo plans.  Adding
+    the full sequence with ``ON CONFLICT DO NOTHING`` preserves any existing
+    readings, check-ins and notes while ensuring a plan cannot finish merely
+    because it has reached the last old seeded day.
+    """
     books = get_bible_books(conn)
     for plan in get_plans(conn):
-        with conn.cursor() as cur:
-            cur.execute('SELECT 1 FROM plan_days WHERE plan_id = %s LIMIT 1', (plan['id'],))
-            if cur.fetchone():
-                continue
         selected_books = [
             book
             for book in books

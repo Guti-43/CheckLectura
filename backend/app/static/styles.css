@@ -18,6 +18,8 @@
 
 * { box-sizing: border-box; }
 
+html, body { max-width: 100%; overflow-x: clip; }
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -97,6 +99,7 @@ a { color: inherit; text-decoration: none; }
 }
 .topbar-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
 .content { display: grid; gap: 18px; }
+.content > * { min-width: 0; }
 .calendar-hero { order: 0; }
 .stats-grid { order: 1; }
 .calendar-panel { order: 2; }
@@ -194,7 +197,8 @@ input:focus, textarea:focus { outline: 2px solid rgba(166, 124, 82, 0.18); borde
 @media (max-width: 640px) {
   body { font-size: 16px; }
   .page-shell {
-    width: min(100% - 24px, 100%);
+    width: calc(100% - 24px);
+    max-width: 100%;
     padding: max(18px, env(safe-area-inset-top)) 0 calc(28px + env(safe-area-inset-bottom));
   }
   .topbar { gap: 14px; margin-bottom: 18px; padding-right: 50px; }
@@ -223,6 +227,7 @@ input:focus, textarea:focus { outline: 2px solid rgba(166, 124, 82, 0.18); borde
   .member-note { grid-template-columns: 1fr; gap: 4px; padding: 11px 12px; }
   .member-note p { grid-column: auto; }
   .calendar-panel { padding: 14px; }
+  .calendar-panel, .calendar-carousel, .carousel { min-width: 0; max-width: 100%; }
   .calendar-panel .panel-head { flex-direction: row; align-items: center; }
   .calendar-panel h3 { font-size: 0.96rem; }
   .carousel { justify-content: flex-start; gap: 9px; padding: 10px 3px 12px; scroll-padding-inline: 3px; }

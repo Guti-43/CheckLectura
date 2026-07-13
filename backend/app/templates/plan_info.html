@@ -3,7 +3,7 @@
 {% block content %}
 <section class="hero-card calendar-hero">
   <div>
-    <p class="eyebrow">✨ Info del plan</p>
+    <p class="eyebrow">Info del plan</p>
     <h2>{{ plan.name }}</h2>
     <p class="muted">Todo lo importante del plan, de un vistazo.</p>
   </div>
@@ -15,19 +15,19 @@
 
 <section class="grid stats-grid">
   <article class="stat-card">
-    <span>📖 Ritmo diario</span>
+    <span>Ritmo diario</span>
     <strong>{{ plan.chapters_per_day }}</strong>
   </article>
   <article class="stat-card">
-    <span>📚 Capítulos en total</span>
+    <span>Capitulos en total</span>
     <strong>{{ plan.bible_total_chapters }}</strong>
   </article>
   <article class="stat-card">
-    <span>🏁 Fin estimado</span>
+    <span>Fin estimado</span>
     <strong>{{ plan.estimated_finish_label }}</strong>
   </article>
   <article class="stat-card">
-    <span>🚀 Así vais</span>
+    <span>Asi vais</span>
     <strong>{{ completion }}%</strong>
   </article>
 </section>
@@ -36,30 +36,30 @@
   <article class="stat-card">
     <span>Inicio</span>
     <strong>{{ plan.start_day_label }}</strong>
-    <p class="muted">Aquí arrancó todo</p>
+    <p class="muted">Aqui arranco todo</p>
   </article>
   <article class="stat-card">
-    <span>Días del plan</span>
+    <span>Dias del plan</span>
     <strong>{{ total_days }}</strong>
-    <p class="muted">Los que ya tenéis preparados</p>
+    <p class="muted">Los que ya teneis preparados</p>
   </article>
   <article class="stat-card">
-    <span>Al día</span>
+    <span>Al dia</span>
     <strong>{{ completed_days }}</strong>
-    <p class="muted">Días que ya habéis terminado</p>
+    <p class="muted">Dias que ya habeis terminado</p>
   </article>
   <article class="stat-card">
     <span>Por hacer</span>
     <strong>{{ pending_days }}</strong>
-    <p class="muted">Aún queda tiempo</p>
+    <p class="muted">Aun queda trabajo</p>
   </article>
 </section>
 
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">🫶 La crew</p>
-      <h3>Quién está en este plan</h3>
+      <p class="eyebrow">Participantes</p>
+      <h3>Quien esta en este plan</h3>
     </div>
   </div>
   <div class="member-row big">
@@ -72,7 +72,7 @@
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">🔥 Cómo vais</p>
+      <p class="eyebrow">Como vais</p>
       <h3>El ritmo de cada uno</h3>
     </div>
   </div>
@@ -81,9 +81,9 @@
     <article class="stat-card">
       <span>{{ member.name }}</span>
       <strong>{{ member.current_streak }}</strong>
-      <p class="muted">{{ 'Mejor racha:' | t(request) }} {{ member.best_streak }} {{ 'dias' | t(request) }}</p>
-      <p class="muted">Días leídos: {{ member.read_days }}</p>
-      <p class="muted">Días sin marcar: {{ member.missed_days }}</p>
+      <p class="muted">Mejor racha: {{ member.best_streak }} dias</p>
+      <p class="muted">Dias leidos: {{ member.read_days }}</p>
+      <p class="muted">Dias sin marcar: {{ member.missed_days }}</p>
     </article>
     {% endfor %}
   </div>
@@ -92,8 +92,8 @@
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">⚡ Los rápidos</p>
-      <h3>Quién suele marcar primero</h3>
+      <p class="eyebrow">Los rapidos</p>
+      <h3>Quien suele marcar primero</h3>
     </div>
   </div>
   <div class="grid stats-grid">
@@ -101,25 +101,9 @@
     <article class="stat-card">
       <span>{{ member.name }}</span>
       <strong>{{ first_reader.get(member.id, 0) }}</strong>
-      <p class="muted">Veces que llegó primero</p>
+      <p class="muted">Veces que llego primero</p>
     </article>
     {% endfor %}
   </div>
 </section>
-
-{% if latest_day %}
-<section class="panel">
-  <div class="panel-head">
-    <div>
-      <p class="eyebrow">Lo último añadido</p>
-      <h3>{{ latest_day.day_label }}</h3>
-    </div>
-    <span class="pill {{ 'ok' if latest_day.is_read else 'warn' }}">{{ 'Leido' if latest_day.is_read else 'Pendiente' }}</span>
-  </div>
-  <p class="muted">{{ latest_day.title or 'Sin titulo' }} - {{ latest_day.scripture or 'Sin pasaje' }}</p>
-  {% if latest_day.notes %}
-  <p class="muted">{{ latest_day.notes }}</p>
-  {% endif %}
-</section>
-{% endif %}
 {% endblock %}

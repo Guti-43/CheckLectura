@@ -180,9 +180,11 @@ input:focus, textarea:focus { outline: 2px solid rgba(166, 124, 82, 0.18); borde
 .login-form { display: grid; gap: 14px; }
 .login-form label { display: grid; gap: 8px; }
 .login-form label[hidden] { display: none; }
+.auth-switch { margin: 0; text-align: center; color: var(--muted); }
+.auth-switch a { color: var(--accent); font-weight: 800; }
 .admin-create-form { display: flex; gap: 10px; align-items: center; }
 .admin-user-list { display: grid; gap: 10px; }
-.admin-user-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
+.admin-user-row { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr) auto auto; gap: 10px; align-items: center; }
 .login-error { padding: 12px 14px; border-radius: 16px; background: #f7efe5; border: 1px solid #e8d8c8; color: #8b623f; }
 @media (max-width: 900px) {
   .topbar, .hero-card, .panel-head { flex-direction: column; align-items: stretch; }
@@ -190,11 +192,60 @@ input:focus, textarea:focus { outline: 2px solid rgba(166, 124, 82, 0.18); borde
   .form-grid, .user-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
-  .page-shell { width: min(100% - 18px, 100%); padding-top: 18px; }
-  .stats-grid { grid-template-columns: 1fr; }
-  .list-item, .check-row { grid-template-columns: 1fr; }
+  body { font-size: 16px; }
+  .page-shell {
+    width: min(100% - 24px, 100%);
+    padding: max(18px, env(safe-area-inset-top)) 0 calc(28px + env(safe-area-inset-bottom));
+  }
+  .topbar { gap: 14px; margin-bottom: 18px; padding-right: 50px; }
+  .topbar-actions { gap: 8px; justify-content: flex-start; }
+  .topbar-actions .status-pill, .topbar-actions .button, .nav-link { min-height: 42px; padding: 9px 12px; }
+  .content { gap: 14px; }
+  h1 { font-size: 2.15rem; }
+  h2 { font-size: 1.55rem; }
+  h3 { font-size: 1.12rem; }
+  .eyebrow { margin-bottom: 6px; font-size: 0.66rem; letter-spacing: 0.13em; }
+  .hero-card, .panel { padding: 16px; border-radius: 20px; }
+  .hero-card { gap: 14px; }
+  .panel-head { gap: 12px; margin-bottom: 14px; }
+  .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .stat-card { min-width: 0; padding: 14px; border-radius: 18px; }
+  .stat-card span { margin-bottom: 7px; font-size: 0.82rem; }
+  .stat-card strong { font-size: 1.35rem; overflow-wrap: anywhere; }
+  .stat-card p { margin-bottom: 0; font-size: 0.82rem; }
+  .list-item, .check-row { padding: 13px 14px; }
+  .unread-item { grid-template-columns: minmax(0, 1fr) auto; }
+  .focus-card { gap: 14px; padding: 15px; border-radius: 18px; }
+  .focus-card h3 { margin-bottom: 6px; }
+  .action-stack { width: 100%; justify-items: stretch; }
+  .action-stack .button, .notes-editor .button { width: 100%; justify-self: stretch; }
+  .notes-box, .member-notes { margin-top: 14px; }
+  .member-note { grid-template-columns: 1fr; gap: 4px; padding: 11px 12px; }
+  .member-note p { grid-column: auto; }
+  .calendar-panel { padding: 14px; }
+  .calendar-panel .panel-head { flex-direction: row; align-items: center; }
+  .calendar-panel h3 { font-size: 0.96rem; }
+  .carousel { justify-content: flex-start; gap: 9px; padding: 10px 3px 12px; scroll-padding-inline: 3px; }
+  .calendar-day { flex-basis: 60px; min-width: 60px; border-radius: 15px; }
+  .calendar-day strong { font-size: 1.2rem; }
+  .calendar-help { font-size: 0.84rem; }
+  .plan-card { padding: 16px; border-radius: 20px; }
+  .plan-card-head { gap: 8px; }
+  .plan-card-head h3 { overflow-wrap: anywhere; }
+  .plan-footer { font-size: 0.9rem; }
+  .plan-card-actions { gap: 8px; }
+  .plan-card-actions .button { min-width: 0; padding-inline: 11px; }
+  .icon-button { width: 42px; min-height: 42px; }
+  .plan-dialog, .delete-dialog { width: calc(100% - 20px); max-height: calc(100dvh - 20px); border-radius: 20px; }
+  .plan-dialog { overflow-y: auto; }
+  .plan-form, .delete-dialog-content { padding: 20px 16px; }
+  .plan-form { gap: 15px; }
+  .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .dialog-actions .button { width: 100%; }
+  .member-popup { position: fixed; z-index: 40; right: 14px; left: 14px; top: auto; bottom: 14px; width: auto; max-height: min(45dvh, 330px); overflow-y: auto; }
   .admin-create-form, .admin-user-row { display: grid; grid-template-columns: 1fr; }
 }
+
 .plan-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -632,4 +683,53 @@ input:focus, textarea:focus { outline: 2px solid rgba(166, 124, 82, 0.18); borde
     flex-basis: 64px;
   }
 
+}
+
+/* Mobile refinements must come last: plan components are declared above. */
+@media (max-width: 640px) {
+  .plan-card { padding: 16px; border-radius: 20px; }
+  .plan-card-head { gap: 8px; }
+  .plan-card-head h3 { overflow-wrap: anywhere; }
+  .plan-footer { font-size: 0.9rem; }
+  .plan-card-actions { gap: 8px; }
+  .plan-card-actions .button { min-width: 0; padding-inline: 11px; }
+  .icon-button { width: 42px; min-height: 42px; }
+
+  .focus-card { gap: 14px; padding: 15px; border-radius: 18px; }
+  .focus-card h3 { margin-bottom: 6px; }
+  .action-stack { width: 100%; justify-items: stretch; }
+  .action-stack .button, .notes-editor .button { width: 100%; justify-self: stretch; }
+  .notes-box, .member-notes { margin-top: 14px; }
+  .member-note { grid-template-columns: 1fr; gap: 4px; padding: 11px 12px; }
+  .member-note p { grid-column: auto; }
+
+  .calendar-panel { padding: 14px; }
+  .calendar-panel .panel-head { flex-direction: row; align-items: center; }
+  .calendar-panel h3 { font-size: 0.96rem; }
+  .carousel { justify-content: flex-start; gap: 9px; padding: 10px 3px 12px; scroll-padding-inline: 3px; }
+  .calendar-day { border-radius: 15px; }
+  .calendar-day strong { font-size: 1.2rem; }
+  .calendar-help { font-size: 0.84rem; }
+
+  .plan-dialog, .delete-dialog {
+    width: calc(100% - 20px);
+    max-height: calc(100dvh - 20px);
+    border-radius: 20px;
+  }
+  .plan-dialog { overflow-y: auto; }
+  .plan-form, .delete-dialog-content { padding: 20px 16px; }
+  .plan-form { gap: 15px; }
+  .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .dialog-actions .button { width: 100%; }
+  .member-popup {
+    position: fixed;
+    z-index: 40;
+    right: 14px;
+    left: 14px;
+    top: auto;
+    bottom: 14px;
+    width: auto;
+    max-height: min(45dvh, 330px);
+    overflow-y: auto;
+  }
 }

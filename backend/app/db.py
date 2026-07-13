@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from contextlib import contextmanager
+from hashlib import md5
 from typing import Any, Generator
 
 import psycopg
@@ -149,10 +150,12 @@ def init_db() -> None:
                 CREATE TABLE IF NOT EXISTS users (
                     id serial PRIMARY KEY,
                     name text NOT NULL UNIQUE,
+                    password_md5 text NOT NULL,
                     sort_order integer NOT NULL DEFAULT 0
                 )
                 '''
             )
+            cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_md5 text')
             cur.execute(
                 '''
                 CREATE TABLE IF NOT EXISTS plans (
@@ -230,6 +233,9 @@ def init_db() -> None:
             seed_plan_checkins(conn)
             _mark_initial_seed_complete(conn)
 
+        _backfill_checkin_dates_for_streaks(conn)
+        _backfill_user_passwords(conn)
+
 
 def _is_initial_seed_complete(conn: psycopg.Connection[Any]) -> bool:
     with conn.cursor() as cur:
@@ -242,6 +248,47 @@ def _mark_initial_seed_complete(conn: psycopg.Connection[Any]) -> None:
         cur.execute(
             "INSERT INTO app_state (state_key, state_value) VALUES ('initial_seed_complete', 'true')"
         )
+    conn.commit()
+
+
+def _backfill_checkin_dates_for_streaks(conn: psycopg.Connection[Any]) -> None:
+    """Give existing check-ins a sensible baseline before streak timing existed.
+
+    This runs just once. New check-ins keep their real save time, which lets
+    the streak logic distinguish a reading completed on time from one ticked
+    off later.
+    """
+    state_key = 'checkin_dates_backfilled_for_streaks'
+    with conn.cursor() as cur:
+        cur.execute('SELECT 1 FROM app_state WHERE state_key = %s', (state_key,))
+        if cur.fetchone():
+            return
+        cur.execute(
+            '''
+            UPDATE plan_checkins AS checkin
+            SET updated_at = plan_day.day_date + interval '12 hours'
+            FROM plan_days AS plan_day
+            WHERE plan_day.id = checkin.plan_day_id
+            '''
+        )
+        cur.execute(
+            'INSERT INTO app_state (state_key, state_value) VALUES (%s, %s)',
+            (state_key, 'true'),
+        )
+    conn.commit()
+
+
+def _password_md5(password: str) -> str:
+    return md5(password.encode('utf-8')).hexdigest()
+
+
+def _backfill_user_passwords(conn: psycopg.Connection[Any]) -> None:
+    """Set legacy users' initial password to their exact name."""
+    with conn.cursor() as cur:
+        cur.execute('SELECT id, name FROM users WHERE password_md5 IS NULL OR password_md5 = %s', ('',))
+        for user_id, name in cur.fetchall():
+            cur.execute('UPDATE users SET password_md5 = %s WHERE id = %s', (_password_md5(name), user_id))
+        cur.execute('ALTER TABLE users ALTER COLUMN password_md5 SET NOT NULL')
     conn.commit()
 
 
@@ -259,11 +306,11 @@ def seed_users(conn: psycopg.Connection[Any]) -> None:
             if cur.rowcount == 0:
                 cur.execute(
                     '''
-                    INSERT INTO users (name, sort_order)
-                    VALUES (%s, %s)
+                    INSERT INTO users (name, password_md5, sort_order)
+                    VALUES (%s, %s, %s)
                     ON CONFLICT (name) DO NOTHING
                     ''',
-                    (user['name'], user['sort_order']),
+                    (user['name'], _password_md5(user['name']), user['sort_order']),
                 )
         conn.commit()
 
@@ -280,19 +327,39 @@ def get_users(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
         return [dict(row) for row in cur.fetchall()]
 
 
-def create_user(conn: psycopg.Connection[Any], name: str) -> dict[str, Any]:
+def get_user_by_credentials(conn: psycopg.Connection[Any], name: str, password: str) -> dict[str, Any] | None:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, name, sort_order
+            FROM users
+            WHERE name = %s AND password_md5 = %s
+            ''',
+            (name, _password_md5(password)),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def create_user(conn: psycopg.Connection[Any], name: str, password: str) -> dict[str, Any]:
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM users')
         sort_order = cur.fetchone()['next_order']
-        cur.execute('INSERT INTO users (name, sort_order) VALUES (%s, %s) RETURNING id, name, sort_order', (name, sort_order))
+        cur.execute(
+            'INSERT INTO users (name, password_md5, sort_order) VALUES (%s, %s, %s) RETURNING id, name, sort_order',
+            (name, _password_md5(password), sort_order),
+        )
         user = dict(cur.fetchone())
     conn.commit()
     return user
 
 
-def update_user(conn: psycopg.Connection[Any], user_id: int, name: str) -> dict[str, Any] | None:
+def update_user(conn: psycopg.Connection[Any], user_id: int, name: str, password: str = '') -> dict[str, Any] | None:
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-        cur.execute('UPDATE users SET name = %s WHERE id = %s RETURNING id, name, sort_order', (name, user_id))
+        if password:
+            cur.execute('UPDATE users SET name = %s, password_md5 = %s WHERE id = %s RETURNING id, name, sort_order', (name, _password_md5(password), user_id))
+        else:
+            cur.execute('UPDATE users SET name = %s WHERE id = %s RETURNING id, name, sort_order', (name, user_id))
         row = cur.fetchone()
     conn.commit()
     return dict(row) if row else None
@@ -542,13 +609,13 @@ def seed_plan_checkins(conn: psycopg.Connection[Any]) -> None:
                 for user_name, is_read in checkins.items():
                     cur.execute(
                         '''
-                        INSERT INTO plan_checkins (plan_day_id, user_id, is_read)
-                        VALUES (%s, %s, %s)
+                        INSERT INTO plan_checkins (plan_day_id, user_id, is_read, updated_at)
+                        VALUES (%s, %s, %s, %s::date + interval '12 hours')
                         ON CONFLICT (plan_day_id, user_id) DO UPDATE
                         SET is_read = EXCLUDED.is_read,
-                            updated_at = now()
+                            updated_at = EXCLUDED.updated_at
                         ''',
-                        (plan_day_id, user_id_by_name[user_name], is_read),
+                        (plan_day_id, user_id_by_name[user_name], is_read, day_date),
                     )
         conn.commit()
 

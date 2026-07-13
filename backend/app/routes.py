@@ -8,7 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .auth import ADMIN_PASSWORD, ADMIN_SESSION_VALUE, ADMIN_USERNAME, SESSION_COOKIE, get_current_user
-from .db import create_user, delete_user, get_conn, get_users, update_user
+from .db import create_user, delete_user, get_conn, get_user_by_credentials, get_users, update_user
 from .i18n import translate
 from .repository import (
     delete_plan,
@@ -50,17 +50,41 @@ def login_form(request: Request):
 @router.post('/login')
 def login(name: str = Form(''), password: str = Form('')) -> RedirectResponse:
     clean_name = name.strip()
-    if clean_name.lower() == ADMIN_USERNAME:
+    if clean_name == ADMIN_USERNAME:
         if password != ADMIN_PASSWORD:
             return RedirectResponse(url='/login?error=admin', status_code=303)
         response = RedirectResponse(url='/admin', status_code=303)
         response.set_cookie(SESSION_COOKIE, ADMIN_SESSION_VALUE, httponly=True, samesite='lax')
         return response
     with get_conn() as conn:
-        users = get_users(conn)
-    user = next((item for item in users if item['name'].lower() == clean_name.lower()), None)
+        user = get_user_by_credentials(conn, clean_name, password)
     if user is None:
-        return RedirectResponse(url='/login?error=1', status_code=303)
+        return RedirectResponse(url='/login?error=credentials', status_code=303)
+    response = RedirectResponse(url='/plans', status_code=303)
+    response.set_cookie(SESSION_COOKIE, str(user['id']), httponly=True, samesite='lax')
+    return response
+
+
+@router.get('/signup', response_class=HTMLResponse)
+def signup_form(request: Request):
+    if get_current_user(request):
+        return _plans_redirect()
+    return templates.TemplateResponse('signup.html', {'request': request, 'page_title': 'Crear cuenta - CheckLectura'})
+
+
+@router.post('/signup')
+def signup(name: str = Form(''), password: str = Form('')) -> RedirectResponse:
+    clean_name = name.strip()
+    if not clean_name or not password or clean_name.lower() == ADMIN_USERNAME:
+        return RedirectResponse(url='/signup?error=invalid', status_code=303)
+
+    with get_conn() as conn:
+        # Usernames are case-sensitive at login, but reserve case variants to
+        # avoid creating confusingly similar accounts.
+        if clean_name.lower() in {user['name'].lower() for user in get_users(conn)}:
+            return RedirectResponse(url='/signup?error=taken', status_code=303)
+        user = create_user(conn, clean_name, password)
+
     response = RedirectResponse(url='/plans', status_code=303)
     response.set_cookie(SESSION_COOKIE, str(user['id']), httponly=True, samesite='lax')
     return response
@@ -123,20 +147,20 @@ def admin_page(request: Request):
 
 
 @router.post('/admin/users/create')
-def admin_create_user(request: Request, name: str = Form('')) -> RedirectResponse:
+def admin_create_user(request: Request, name: str = Form(''), password: str = Form('')) -> RedirectResponse:
     redirect = _admin_only(request)
     if redirect:
         return redirect
     clean_name = name.strip()
-    if clean_name and clean_name.lower() != ADMIN_USERNAME:
+    if clean_name and password and clean_name.lower() != ADMIN_USERNAME:
         with get_conn() as conn:
             if clean_name.lower() not in {user['name'].lower() for user in get_users(conn)}:
-                create_user(conn, clean_name)
+                create_user(conn, clean_name, password)
     return RedirectResponse(url='/admin', status_code=303)
 
 
 @router.post('/admin/users/{user_id}/update')
-def admin_update_user(request: Request, user_id: int, name: str = Form('')) -> RedirectResponse:
+def admin_update_user(request: Request, user_id: int, name: str = Form(''), password: str = Form('')) -> RedirectResponse:
     redirect = _admin_only(request)
     if redirect:
         return redirect
@@ -145,7 +169,7 @@ def admin_update_user(request: Request, user_id: int, name: str = Form('')) -> R
         with get_conn() as conn:
             names = {user['name'].lower() for user in get_users(conn) if user['id'] != user_id}
             if clean_name.lower() not in names:
-                update_user(conn, user_id, clean_name)
+                update_user(conn, user_id, clean_name, password)
     return RedirectResponse(url='/admin', status_code=303)
 
 

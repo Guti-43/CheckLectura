@@ -54,8 +54,20 @@ def _decorate_focus_day(day: dict[str, Any] | None, user_id: int) -> dict[str, A
 
 
 def _streaks_for_user(days: list[dict[str, Any]], user_id: int) -> tuple[int, int]:
-    past_and_today = [day for day in days if parse_day(day['day_date']) <= date.today()]
-    flags = [_day_read_by_user(day, user_id) for day in past_and_today]
+    """Calculate a streak without letting today's pending read break it.
+
+    Only readings saved on (or before) their scheduled date can form a
+    streak. Completing an old pending day later therefore does not repair a
+    previous gap.
+    """
+    today = date.today()
+    past_and_today = [
+        day
+        for day in days
+        if parse_day(day['day_date']) < today
+        or (parse_day(day['day_date']) == today and _read_on_scheduled_day(day, user_id))
+    ]
+    flags = [_read_on_scheduled_day(day, user_id) for day in past_and_today]
     current = 0
     for flag in reversed(flags):
         if not flag:
@@ -70,6 +82,17 @@ def _streaks_for_user(days: list[dict[str, Any]], user_id: int) -> tuple[int, in
         else:
             run = 0
     return current, best
+
+
+def _read_on_scheduled_day(day: dict[str, Any], user_id: int) -> bool:
+    scheduled_day = parse_day(day['day_date'])
+    return any(
+        checkin['user_id'] == user_id
+        and checkin['is_read']
+        and checkin.get('updated_at')
+        and checkin['updated_at'].date() <= scheduled_day
+        for checkin in day['checklist']
+    )
 
 
 def build_plan_list_context(conn: psycopg.Connection[Any], user_id: int) -> dict[str, Any]:

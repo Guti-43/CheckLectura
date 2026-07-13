@@ -147,9 +147,24 @@ def compute_plan_metrics(conn: psycopg.Connection[Any], plan_id: int) -> dict[st
 
 
 def _streaks(days: list[dict[str, Any]], user_id: int) -> tuple[int, int]:
-    past_and_today = [day for day in days if date.fromisoformat(day['day_date']) <= date.today()]
+    """Return streaks based on reads completed on their scheduled day.
+
+    A late check-in is still a valid completed reading, but it must not join two
+    separate streaks.  An unfinished today is ignored so it cannot break the
+    streak from yesterday; when today is completed it extends that streak.
+    """
+    today = date.today()
+    past_and_today = [
+        day
+        for day in days
+        if date.fromisoformat(day['day_date']) < today
+        or (
+            date.fromisoformat(day['day_date']) == today
+            and _read_on_scheduled_day(day, user_id)
+        )
+    ]
     flags = [
-        any(checkin['user_id'] == user_id and checkin['is_read'] for checkin in day['checklist'])
+        _read_on_scheduled_day(day, user_id)
         for day in past_and_today
     ]
     current = 0
@@ -166,6 +181,17 @@ def _streaks(days: list[dict[str, Any]], user_id: int) -> tuple[int, int]:
         else:
             run = 0
     return current, best
+
+
+def _read_on_scheduled_day(day: dict[str, Any], user_id: int) -> bool:
+    scheduled_day = date.fromisoformat(day['day_date'])
+    return any(
+        checkin['user_id'] == user_id
+        and checkin['is_read']
+        and checkin.get('updated_at')
+        and checkin['updated_at'].date() <= scheduled_day
+        for checkin in day['checklist']
+    )
 
 
 def _first_reader_counts(days: list[dict[str, Any]], members: list[dict[str, Any]]) -> dict[int, int]:

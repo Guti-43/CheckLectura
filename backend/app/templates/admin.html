@@ -14,6 +14,7 @@
   <p class="eyebrow" data-i18n="admin.new">Nuevo usuario</p>
   <form method="post" action="/admin/users/create" class="admin-create-form">
     <input name="name" required placeholder="Nombre" data-i18n-placeholder="placeholder.name" />
+    <input name="password" type="password" required placeholder="Contraseña" data-i18n-placeholder="placeholder.password" autocomplete="new-password" />
     <button class="button primary" type="submit" data-i18n="admin.add">+ Añadir</button>
   </form>
 </section>
@@ -25,6 +26,7 @@
     <form method="post" action="/admin/users/{{ user.id }}/update" class="admin-user-row">
       <span class="member-chip">👤</span>
       <input name="name" value="{{ user.name }}" required />
+      <input name="password" type="password" placeholder="Nueva contraseña (opcional)" autocomplete="new-password" />
       <button class="button secondary" type="submit" data-i18n="admin.save">Guardar</button>
       <button class="icon-button danger" type="submit" formaction="/admin/users/{{ user.id }}/delete" formmethod="post" aria-label="Eliminar a {{ user.name }}">🗑</button>
     </form>

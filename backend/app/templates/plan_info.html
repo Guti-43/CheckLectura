@@ -3,63 +3,63 @@
 {% block content %}
 <section class="hero-card calendar-hero">
   <div>
-    <p class="eyebrow">Info del plan</p>
+    <p class="eyebrow">{{ 'Info del plan' | t(request) }}</p>
     <h2>{{ plan.name }}</h2>
-    <p class="muted">Todo lo importante del plan, de un vistazo.</p>
+    <p class="muted">{{ 'Todo lo importante del plan, de un vistazo.' | t(request) }}</p>
   </div>
   <div class="hero-actions">
-    <a class="button secondary" href="/plans/{{ plan.id }}">Volver al progreso</a>
-    <div class="status-pill">Inicio {{ plan.start_day_label }}</div>
+    <a class="button secondary" href="/plans/{{ plan.id }}">{{ 'Volver al progreso' | t(request) }}</a>
+    <div class="status-pill">{{ 'Inicio' | t(request) }} {{ plan.start_day_label }}</div>
   </div>
 </section>
 
 <section class="grid stats-grid">
   <article class="stat-card">
-    <span>Ritmo diario</span>
+    <span>{{ 'Ritmo diario' | t(request) }}</span>
     <strong>{{ plan.chapters_per_day }}</strong>
   </article>
   <article class="stat-card">
-    <span>Capitulos en total</span>
+    <span>{{ 'Capítulos en total' | t(request) }}</span>
     <strong>{{ plan.bible_total_chapters }}</strong>
   </article>
   <article class="stat-card">
-    <span>Fin estimado</span>
+    <span>{{ 'Fin estimado' | t(request) }}</span>
     <strong>{{ plan.estimated_finish_label }}</strong>
   </article>
   <article class="stat-card">
-    <span>Asi vais</span>
+    <span>{{ 'Así vais' | t(request) }}</span>
     <strong>{{ completion }}%</strong>
   </article>
 </section>
 
 <section class="grid stats-grid">
   <article class="stat-card">
-    <span>Inicio</span>
+    <span>{{ 'Inicio' | t(request) }}</span>
     <strong>{{ plan.start_day_label }}</strong>
-    <p class="muted">Aqui arranco todo</p>
+    <p class="muted">{{ 'Aquí arrancó todo' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>Dias del plan</span>
+    <span>{{ 'Días del plan' | t(request) }}</span>
     <strong>{{ total_days }}</strong>
-    <p class="muted">Los que ya teneis preparados</p>
+    <p class="muted">{{ 'Los que ya tenéis preparados' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>Al dia</span>
+    <span>{{ 'Al día' | t(request) }}</span>
     <strong>{{ completed_days }}</strong>
-    <p class="muted">Dias que ya habeis terminado</p>
+    <p class="muted">{{ 'Días que ya habéis terminado' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>Por hacer</span>
+    <span>{{ 'Por hacer' | t(request) }}</span>
     <strong>{{ pending_days }}</strong>
-    <p class="muted">Aun queda trabajo</p>
+    <p class="muted">{{ 'Aún queda trabajo' | t(request) }}</p>
   </article>
 </section>
 
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">Participantes</p>
-      <h3>Quien esta en este plan</h3>
+      <p class="eyebrow">{{ 'Participantes' | t(request) }}</p>
+      <h3>{{ 'Quién está en este plan' | t(request) }}</h3>
     </div>
   </div>
   <div class="member-row big">
@@ -72,8 +72,8 @@
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">Como vais</p>
-      <h3>El ritmo de cada uno</h3>
+      <p class="eyebrow">{{ 'Cómo vais' | t(request) }}</p>
+      <h3>{{ 'El ritmo de cada uno' | t(request) }}</h3>
     </div>
   </div>
   <div class="grid stats-grid">
@@ -81,9 +81,9 @@
     <article class="stat-card">
       <span>{{ member.name }}</span>
       <strong>{{ member.current_streak }}</strong>
-      <p class="muted">Mejor racha: {{ member.best_streak }} dias</p>
-      <p class="muted">Dias leidos: {{ member.read_days }}</p>
-      <p class="muted">Dias sin marcar: {{ member.missed_days }}</p>
+      <p class="muted">{{ 'Mejor racha:' | t(request) }} {{ member.best_streak }} {{ 'días' | t(request) }}</p>
+      <p class="muted">{{ 'Días leídos:' | t(request) }} {{ member.read_days }}</p>
+      <p class="muted">{{ 'Días sin marcar:' | t(request) }} {{ member.missed_days }}</p>
     </article>
     {% endfor %}
   </div>
@@ -92,8 +92,8 @@
 <section class="panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">Los rapidos</p>
-      <h3>Quien suele marcar primero</h3>
+      <p class="eyebrow">{{ 'Los rápidos' | t(request) }}</p>
+      <h3>{{ 'Quién suele marcar primero' | t(request) }}</h3>
     </div>
   </div>
   <div class="grid stats-grid">
@@ -101,7 +101,7 @@
     <article class="stat-card">
       <span>{{ member.name }}</span>
       <strong>{{ first_reader.get(member.id, 0) }}</strong>
-      <p class="muted">Veces que llego primero</p>
+      <p class="muted">{{ 'Veces que llegó primero' | t(request) }}</p>
     </article>
     {% endfor %}
   </div>

@@ -223,6 +223,7 @@ def build_plan_calendar_context(
             'start_day_label': pretty_day(plan['start_day']),
             'chapters_per_day': plan['chapters_per_day'],
             'bible_total_chapters': plan['bible_total_chapters'],
+            'is_recurring': plan['is_recurring'],
         },
         'members': metrics['members'],
         'days': days,

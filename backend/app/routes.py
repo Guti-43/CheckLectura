@@ -8,9 +8,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .auth import ADMIN_PASSWORD, ADMIN_SESSION_VALUE, ADMIN_USERNAME, SESSION_COOKIE, get_current_user
-from .db import create_user, delete_user, get_conn, get_user_by_credentials, get_users, update_user
-from .i18n import translate
+from .db import create_user, delete_user, get_bible_books, get_conn, get_user_by_credentials, get_users, restart_recurring_plan, update_user
+from .i18n import translate, translate_month_label
 from .repository import (
+    compute_plan_metrics,
     delete_plan,
     create_plan,
     get_plan,
@@ -30,6 +31,7 @@ from .services import (
 router = APIRouter()
 templates = Jinja2Templates(directory=str(Path(__file__).parent / 'templates'))
 templates.env.filters['t'] = translate
+templates.env.filters['month_t'] = translate_month_label
 
 
 def _login_redirect() -> RedirectResponse:
@@ -116,9 +118,16 @@ def plans_page(request: Request):
         return RedirectResponse(url='/admin', status_code=303)
     with get_conn() as conn:
         context = build_plan_list_context(conn, current_user['id'])
+        bible_books = get_bible_books(conn)
     return templates.TemplateResponse(
         'plans.html',
-        {'request': request, 'users': get_users_for_plans(), 'today_iso': date.today().isoformat(), **context},
+        {
+            'request': request,
+            'users': get_users_for_plans(),
+            'bible_books': bible_books,
+            'today_iso': date.today().isoformat(),
+            **context,
+        },
     )
 
 
@@ -190,6 +199,10 @@ def create_plan_page(
     description: str = Form(''),
     start_day: str = Form(''),
     chapters_per_day: int = Form(3),
+    whole_bible: bool = Form(False),
+    start_book_order: int = Form(1),
+    end_book_order: int = Form(66),
+    is_recurring: bool = Form(False),
     member_ids: list[int] = Form([]),
 ) -> RedirectResponse:
     current_user = get_current_user(request)
@@ -198,6 +211,16 @@ def create_plan_page(
     selected_members = set(member_ids) | {current_user['id']}
     with get_conn() as conn:
         valid_user_ids = {user['id'] for user in get_users(conn)}
+        books = get_bible_books(conn)
+        valid_orders = {book['book_order'] for book in books}
+        first_book, last_book = books[0]['book_order'], books[-1]['book_order']
+        if whole_bible:
+            start_book_order, end_book_order = first_book, last_book
+        else:
+            start_book_order = start_book_order if start_book_order in valid_orders else first_book
+            end_book_order = end_book_order if end_book_order in valid_orders else last_book
+            if start_book_order > end_book_order:
+                start_book_order, end_book_order = end_book_order, start_book_order
         create_plan(
             conn,
             name.strip() or 'Plan sin nombre',
@@ -205,7 +228,29 @@ def create_plan_page(
             parse_day(start_day) if start_day else date.today(),
             max(chapters_per_day, 1),
             sorted(selected_members & valid_user_ids),
+            start_book_order,
+            end_book_order,
+            is_recurring,
         )
+    return _plans_redirect()
+
+
+@router.post('/plans/{plan_id}/finish')
+def finish_plan_page(request: Request, plan_id: int) -> RedirectResponse:
+    current_user = get_current_user(request)
+    if current_user is None:
+        return _login_redirect()
+    with get_conn() as conn:
+        user_plans = build_plan_list_context(conn, current_user['id'])['plans']
+        if plan_id not in {plan['id'] for plan in user_plans}:
+            return _plans_redirect()
+        metrics = compute_plan_metrics(conn, plan_id)
+        if not metrics or not metrics['days'] or not all(day['is_read'] for day in metrics['days']):
+            return RedirectResponse(url=f'/plans/{plan_id}', status_code=303)
+        if metrics['plan']['is_recurring']:
+            restart_recurring_plan(conn, plan_id, date.today())
+            return RedirectResponse(url=f'/plans/{plan_id}', status_code=303)
+        delete_plan(conn, plan_id)
     return _plans_redirect()
 
 
@@ -336,9 +381,16 @@ def toggle_my_plan_checkin(
         return _login_redirect()
     with get_conn() as conn:
         current_day = get_plan_day(conn, day_id)
-        if current_day is None:
+        current_plan = get_plan(conn, plan_id)
+        if current_day is None or current_day['plan_id'] != plan_id or current_plan is None:
             return _plans_redirect()
         set_plan_checkin(conn, day_id, current_user['id'], is_read)
+        metrics = compute_plan_metrics(conn, plan_id)
+        plan_finished = is_read and bool(metrics['days']) and all(item['is_read'] for item in metrics['days'])
+        is_recurring = current_plan['is_recurring']
+    if plan_finished:
+        completion = 'recurring' if is_recurring else 'complete'
+        return RedirectResponse(url=f'/plans/{plan_id}?completed={completion}', status_code=303)
     redirect_url = f'/plans/{plan_id}?day={day or current_day["day_date"].isoformat()}'
     if week:
         redirect_url += f'&week={week}'

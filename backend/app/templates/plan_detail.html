@@ -3,49 +3,65 @@
 {% block content %}
 <section class="hero-card calendar-hero">
   <div>
-    <p class="eyebrow">Plan activo</p>
+    <p class="eyebrow">{{ 'Plan activo' | t(request) }}</p>
     <h2>{{ plan.name }}</h2>
-    <p class="muted">Mira qué toca, marca cuando acabes y listo.</p>
+    <p class="muted">{{ 'Mira qué toca, marca cuando acabes y listo.' | t(request) }}</p>
   </div>
   <div class="hero-actions">
     <div class="status-pill">{{ 'Semana' | t(request) }} {{ week_label }}</div>
-    <a class="button secondary" href="/plans/{{ plan.id }}/info">Ver detalles</a>
+    <a class="button secondary" href="/plans/{{ plan.id }}/info">{{ 'Ver detalles' | t(request) }}</a>
   </div>
 </section>
 
+{% if request.query_params.get('completed') in ['complete', 'recurring'] %}
+<dialog class="delete-dialog completion-dialog" id="completion-dialog">
+  <div class="delete-dialog-content">
+    <p class="eyebrow">🎉 {{ 'Plan terminado' | t(request) }}</p>
+    <h3>{{ '¡Lo habéis conseguido!' | t(request) }}</h3>
+    <p class="muted">{{ 'Habéis completado todos los días de este plan.' | t(request) }}</p>
+    <form method="post" action="/plans/{{ plan.id }}/finish" class="actions delete-dialog-actions">
+      <button class="button primary" type="submit">
+        {{ ('Empezar otra vuelta' if request.query_params.get('completed') == 'recurring' else 'Volver a mis planes') | t(request) }}
+      </button>
+    </form>
+  </div>
+</dialog>
+<script>document.getElementById('completion-dialog').showModal();</script>
+{% endif %}
+
 <section class="grid stats-grid">
   <article class="stat-card">
-    <span>📚 Lo que llevas</span>
+    <span>📚 {{ 'Lo que llevas' | t(request) }}</span>
     <strong>{{ current_user_completion }}%</strong>
     <p class="muted">{{ current_user_read_days }} {{ 'dias leidos' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>🔥 Tu racha</span>
+    <span>🔥 {{ 'Tu racha' | t(request) }}</span>
     <strong>{{ current_user_current_streak }}</strong>
     <p class="muted">{{ 'Mejor racha:' | t(request) }} {{ current_user_best_streak }} {{ 'dias' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>☀️ Hoy</span>
+    <span>☀️ {{ 'Hoy' | t(request) }}</span>
     <strong>{{ today_label }}</strong>
-    <p class="muted">Vamos a por ello</p>
+    <p class="muted">{{ 'Vamos a por ello' | t(request) }}</p>
   </article>
   <article class="stat-card">
-    <span>🎯 Plan</span>
-    <strong>{{ plan.chapters_per_day }} caps</strong>
-    <p class="muted">Inicio {{ plan.start_day_label }}</p>
+    <span>🎯 {{ 'Plan' | t(request) }}</span>
+    <strong>{{ plan.chapters_per_day }} {{ 'caps' | t(request) }}</strong>
+    <p class="muted">{{ 'Inicio' | t(request) }} {{ plan.start_day_label }}</p>
   </article>
 </section>
 
 <section class="panel today-panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">☀️ Hoy</p>
-      <h3><span class="fun-icon" aria-hidden="true">📖</span> Tu lectura de hoy</h3>
+      <p class="eyebrow">☀️ {{ 'Hoy' | t(request) }}</p>
+      <h3><span class="fun-icon" aria-hidden="true">📖</span> {{ 'Tu lectura de hoy' | t(request) }}</h3>
     </div>
     {% if today_day %}
-    <span class="pill {{ 'ok' if today_day.my_is_read else 'warn' }}">{{ 'Leido' if today_day.my_is_read else 'Pendiente' }}</span>
+    <span class="pill {{ 'ok' if today_day.my_is_read else 'warn' }}">{{ ('Leido' if today_day.my_is_read else 'Pendiente') | t(request) }}</span>
     {% else %}
-    <span class="pill warn">Sin lectura</span>
+    <span class="pill warn">{{ 'Sin lectura' | t(request) }}</span>
     {% endif %}
   </div>
 
@@ -53,15 +69,15 @@
   <div class="focus-card">
     <div>
       <p class="eyebrow">{{ today_day.day_label }}</p>
-      <h3>{{ today_day.title or 'Sin titulo' }}</h3>
-      <p class="muted">{{ today_day.scripture or 'Sin pasaje asignado' }}</p>
+      <h3>{{ today_day.title or ('Sin título' | t(request)) }}</h3>
+      <p class="muted">{{ today_day.scripture or ('Sin pasaje asignado' | t(request)) }}</p>
     </div>
     <form method="post" action="/plans/{{ plan.id }}/days/{{ today_day.id }}/mine" class="action-stack">
       <input type="hidden" name="week" value="{{ week_start }}" />
       <input type="hidden" name="day" value="{{ today_day.day_date }}" />
       <input type="hidden" name="is_read" value="{{ 'false' if today_day.my_is_read else 'true' }}" />
       <button class="button {{ 'secondary' if today_day.my_is_read else 'primary' }}" type="submit">
-        {{ 'Marcar no leido' if today_day.my_is_read else 'Marcar leido' }}
+        {{ ('Marcar no leido' if today_day.my_is_read else 'Marcar leido') | t(request) }}
       </button>
     </form>
   </div>
@@ -76,7 +92,7 @@
   {% endif %}
   {% if today_day.member_notes %}
   <div class="member-notes">
-    <p class="eyebrow">Notas del día</p>
+    <p class="eyebrow">{{ 'Notas del día' | t(request) }}</p>
     {% for note in today_day.member_notes %}
     <article class="member-note">
       <strong>{{ note.name }}</strong>
@@ -87,32 +103,32 @@
   </div>
   {% endif %}
   {% else %}
-  <p class="muted">Hoy no tienes una lectura programada en este plan.</p>
+  <p class="muted">{{ 'Hoy no tienes una lectura programada en este plan.' | t(request) }}</p>
   {% endif %}
 </section>
 
 <section class="panel calendar-panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">🗓️ Calendario semanal</p>
+      <p class="eyebrow">🗓️ {{ 'Calendario semanal' | t(request) }}</p>
       <h3>{{ 'Elige un día' | t(request) }}</h3>
     </div>
     <div class="week-nav">
       {% if can_go_prev_week %}
-      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ prev_week }}&day={{ prev_week }}" aria-label="Semana anterior">←</a>
+      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ prev_week }}&day={{ prev_week }}" aria-label="{{ 'Semana anterior' | t(request) }}">←</a>
       {% endif %}
-      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ next_week }}&day={{ next_week }}" aria-label="Semana siguiente">→</a>
+      <a class="button secondary" href="/plans/{{ plan.id }}?week={{ next_week }}&day={{ next_week }}" aria-label="{{ 'Semana siguiente' | t(request) }}">→</a>
     </div>
   </div>
 
-  <div class="calendar-carousel" aria-label="Días de la semana">
-    <h3 data-calendar-month>{{ calendar_month_label|capitalize }}</h3>
+  <div class="calendar-carousel" aria-label="{{ 'Días de la semana' | t(request) }}">
+    <h3>{{ calendar_month_label | month_t(request) }}</h3>
     <div class="carousel">
       {% for day in calendar_days %}
       <a
         class="calendar-day {{ day.status }} {{ 'today' if day.is_today else '' }} {{ 'selected' if day.is_selected else '' }}"
         href="/plans/{{ plan.id }}?day={{ day.date }}&week={{ week_start }}"
-        aria-label="{{ day.weekday }} {{ day.label }}: {{ 'leído' if day.my_is_read else 'pendiente' if day.status == 'pending' else 'programado' if day.status == 'future' else 'sin lectura' }}"
+        aria-label="{{ day.weekday }} {{ day.label }}: {{ ('leído' if day.my_is_read else 'pendiente' if day.status == 'pending' else 'programado' if day.status == 'future' else 'sin lectura') | t(request) }}"
         title="{{ day.weekday }} {{ day.label }}"
       >
         <strong>{{ day.date[-2:] }}</strong>
@@ -120,17 +136,17 @@
       {% endfor %}
   </div>
   </div>
-  <p class="calendar-help muted">Toca un día para ver qué tocaba.</p>
+  <p class="calendar-help muted">{{ 'Toca un día para ver qué tocaba.' | t(request) }}</p>
 </section>
 
 <section class="panel unread-panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">🧩 Para ponerte al día</p>
+      <p class="eyebrow">🧩 {{ 'Para ponerte al día' | t(request) }}</p>
       <h3><span class="fun-icon" aria-hidden="true">🚀</span> {{ 'Te quedan' | t(request) }} {{ unread_days|length }} {{ ('día' if unread_days|length == 1 else 'días') | t(request) }}</h3>
     </div>
     {% if unread_days %}
-    <span class="pill warn">Pendientes</span>
+    <span class="pill warn">{{ 'Pendientes' | t(request) }}</span>
     {% else %}
     <span class="pill ok">{{ 'Al día ✨' | t(request) }}</span>
     {% endif %}
@@ -142,14 +158,14 @@
     <a class="list-item unread-item" href="/plans/{{ plan.id }}?day={{ day.day_date }}&week={{ day.week_start }}">
       <div>
         <strong>{{ day.day_label }}</strong>
-        <p>{{ day.title or day.scripture or 'Lectura pendiente' }}</p>
+        <p>{{ day.title or day.scripture or ('Lectura pendiente' | t(request)) }}</p>
       </div>
-      <span class="pill warn">Ver</span>
+      <span class="pill warn">{{ 'Ver' | t(request) }}</span>
     </a>
     {% endfor %}
   </div>
   {% else %}
-  <p class="muted">Vas al día. Buen trabajo.</p>
+  <p class="muted">{{ 'Vas al día. Buen trabajo.' | t(request) }}</p>
   {% endif %}
 </section>
 
@@ -157,11 +173,11 @@
 <section class="panel selected-day-panel">
   <div class="panel-head">
     <div>
-      <p class="eyebrow">🔎 Día seleccionado</p>
+      <p class="eyebrow">🔎 {{ 'Día seleccionado' | t(request) }}</p>
       <h3>{{ selected_day_label }}</h3>
     </div>
     {% if selected_day %}
-    <span class="pill {{ 'ok' if selected_day.my_is_read else 'warn' }}">{{ 'Leido' if selected_day.my_is_read else 'Pendiente' }}</span>
+    <span class="pill {{ 'ok' if selected_day.my_is_read else 'warn' }}">{{ ('Leido' if selected_day.my_is_read else 'Pendiente') | t(request) }}</span>
     {% endif %}
   </div>
 
@@ -169,20 +185,20 @@
   <div class="focus-card">
     <div>
       <p class="eyebrow">{{ selected_day.day_label }}</p>
-      <h3>{{ selected_day.title or 'Sin titulo' }}</h3>
-      <p class="muted">{{ selected_day.scripture or 'Sin pasaje asignado' }}</p>
+      <h3>{{ selected_day.title or ('Sin título' | t(request)) }}</h3>
+      <p class="muted">{{ selected_day.scripture or ('Sin pasaje asignado' | t(request)) }}</p>
     </div>
     <form method="post" action="/plans/{{ plan.id }}/days/{{ selected_day.id }}/mine" class="action-stack">
       <input type="hidden" name="week" value="{{ week_start }}" />
       <input type="hidden" name="day" value="{{ selected_day.day_date }}" />
       <input type="hidden" name="is_read" value="{{ 'false' if selected_day.my_is_read else 'true' }}" />
       <button class="button {{ 'secondary' if selected_day.my_is_read else 'primary' }}" type="submit">
-        {{ 'Marcar no leido' if selected_day.my_is_read else 'Marcar leido' }}
+        {{ ('Marcar no leido' if selected_day.my_is_read else 'Marcar leido') | t(request) }}
       </button>
     </form>
   </div>
   <div class="member-notes">
-    <p class="eyebrow">Notas del día</p>
+    <p class="eyebrow">{{ 'Notas del día' | t(request) }}</p>
     {% if selected_day.member_notes %}
       {% for note in selected_day.member_notes %}
       <article class="member-note">
@@ -192,11 +208,11 @@
       </article>
       {% endfor %}
     {% else %}
-    <p class="muted">Todavía nadie ha dejado una nota.</p>
+    <p class="muted">{{ 'Todavía nadie ha dejado una nota.' | t(request) }}</p>
     {% endif %}
   </div>
   {% else %}
-  <p class="muted">Este dia no tiene lectura programada todavia.</p>
+  <p class="muted">{{ 'Este día no tiene lectura programada todavía.' | t(request) }}</p>
   {% endif %}
 </section>
 {% endif %}

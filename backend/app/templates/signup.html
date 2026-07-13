@@ -15,12 +15,12 @@
 
     <form class="login-form" method="post" action="/signup">
       <label>
-        <span data-i18n="login.name">Nombre</span>
-        <input type="text" name="name" placeholder="Nombre" data-i18n-placeholder="placeholder.name" autocomplete="username" autofocus required />
+        <span>{{ 'Nombre' | t(request) }}</span>
+        <input type="text" name="name" placeholder="{{ 'Nombre' | t(request) }}" autocomplete="username" autofocus required />
       </label>
       <label>
-        <span data-i18n="login.password">Contraseña</span>
-        <input type="password" name="password" placeholder="Contraseña" data-i18n-placeholder="placeholder.password" autocomplete="new-password" required />
+        <span>{{ 'Contraseña' | t(request) }}</span>
+        <input type="password" name="password" placeholder="{{ 'Contraseña' | t(request) }}" autocomplete="new-password" required />
       </label>
       <button class="button primary" type="submit">{{ 'Crear cuenta' | t(request) }}</button>
     </form>

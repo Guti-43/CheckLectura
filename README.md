@@ -1,51 +1,31 @@
 # CheckLectura
 
-Web MVC para gestionar varios planes biblicos por usuario con acceso por nombre.
+Una app sencilla para llevar planes de lectura de la Biblia con tus amigos, ver cómo vais y no perder el hilo.
 
-## Flujo
+## Qué puedes hacer
 
-- Inicias sesion escribiendo solo tu nombre.
-- Despues ves la lista de planes en los que participas.
-- Cada plan tiene su propia pantalla con progreso, capitulos diarios, participantes, rachas y quien suele marcar antes.
+- Crear una cuenta e iniciar sesión.
+- Unirte a planes de lectura con otras personas.
+- Crear un plan de toda la Biblia o elegir desde qué libro hasta cuál leer.
+- Marcar la lectura de cada día como hecha.
+- Consultar el calendario semanal: verde si está leído, rojo si quedó pendiente y amarillo para hoy hasta marcarlo.
+- Ver tus días pendientes, rachas, progreso y las notas que deja cada participante.
+- Crear planes recurrentes para volver a empezarlos al terminarlos.
+- Usar la app en español, italiano o inglés desde la bandera de la esquina superior derecha.
 
-## Estructura
+## Cómo empezar
 
-- `backend/app/routes.py`: controladores y paginas HTML.
-- `backend/app/services.py`: logica de planes, progreso y rachas.
-- `backend/app/repository.py`: consultas a la BBDD.
-- `backend/app/db.py`: esquema y semillas.
-- `backend/app/templates/`: vistas HTML.
-- `backend/app/static/`: estilos compartidos.
+1. Abre la app e inicia sesión, o pulsa **Crear cuenta** si es tu primera vez.
+2. En **Mis planes**, crea uno o entra en un plan al que ya pertenezcas.
+3. Elige los participantes, la fecha de inicio y cuántos capítulos leer cada día.
+4. Entra al plan, lee lo que toque y pulsa **Leído** al terminar.
 
-## Arranque
+El plan se completa cuando todos sus días están marcados como leídos. Si era recurrente, podrás iniciar otra vuelta desde el aviso de finalización.
 
-```bash
-docker compose up --build
-```
+## Administrador
 
-Despues:
+La cuenta de administrador sirve para gestionar usuarios desde su panel. No participa en planes ni registra lecturas.
 
-- Web: `http://localhost:5667`
-- Salud: `http://localhost:5667/health`
+## ¿Quieres montar o modificar la app?
 
-## Ngrok
-
-```bash
-ngrok http 5667
-```
-
-## DBeaver
-
-Conecta a PostgreSQL con estos datos:
-
-- Host: `localhost`
-- Port: `5432`
-- Database: `checklectura`
-- User: `checklectura`
-- Password: `checklectura`
-
-## Paginas
-
-- `/login`: acceso por nombre.
-- `/plans`: lista de planes del usuario.
-- `/plans/{id}`: detalle del plan.
+La guía técnica de instalación, Docker, base de datos y estructura del proyecto está en [README para desarrolladores](docs/README-desarrolladores.md).

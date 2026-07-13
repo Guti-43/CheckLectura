@@ -28,7 +28,8 @@ def get_user_plans(conn: psycopg.Connection[Any], user_id: int) -> list[dict[str
         cur.execute(
             '''
             SELECT p.id, p.name, p.description, p.start_day, p.chapters_per_day,
-                   p.bible_total_chapters, p.sort_order, p.updated_at
+                   p.bible_total_chapters, p.start_book_order, p.end_book_order, p.is_recurring,
+                   p.sort_order, p.updated_at
             FROM plans p
             JOIN plan_members pm ON pm.plan_id = p.id
             WHERE pm.user_id = %s
@@ -43,7 +44,8 @@ def get_plan(conn: psycopg.Connection[Any], plan_id: int) -> dict[str, Any] | No
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(
             '''
-            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters,
+                   start_book_order, end_book_order, is_recurring, sort_order, updated_at
             FROM plans
             WHERE id = %s
             ''',

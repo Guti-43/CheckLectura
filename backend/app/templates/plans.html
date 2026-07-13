@@ -3,46 +3,85 @@
 {% block content %}
 <section class="hero-card">
   <div>
-    <p class="eyebrow" data-i18n="plans.kicker">🗂️ Tus planes</p>
-    <h2>Hola, {{ current_user.name }}</h2>
-    <p class="muted">Elige un plan, marca lo que ya llevas y sigue a tu ritmo.</p>
+    <p class="eyebrow">🗂️ {{ 'Tus planes' | t(request) }}</p>
+    <h2>{{ 'Hola,' | t(request) }} {{ current_user.name }}</h2>
+    <p class="muted">{{ 'Elige un plan, marca lo que ya llevas y sigue a tu ritmo.' | t(request) }}</p>
   </div>
   <div class="status-pill">{{ plans|length }} {{ ('plan' if plans|length == 1 else 'planes') | t(request) }}</div>
-  <button class="button primary" type="button" onclick="document.getElementById('create-plan').showModal()" data-i18n="plans.new">+ Nuevo plan</button>
+  <button class="button primary" type="button" onclick="document.getElementById('create-plan').showModal()">{{ '+ Nuevo plan' | t(request) }}</button>
 </section>
 
 <dialog class="plan-dialog" id="create-plan">
   <form method="post" action="/plans/create" class="plan-form">
-    <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('create-plan').close()">×</button>
-    <p class="eyebrow">Plan nuevo</p>
-    <h3>Montamos un plan</h3>
-    <label>Nombre <input name="name" required placeholder="Ej. Lectura de verano" data-i18n-placeholder="placeholder.planName" /></label>
-    <label>Descripción <textarea name="description" rows="2" placeholder="Opcional" data-i18n-placeholder="placeholder.optional"></textarea></label>
+    <button class="dialog-close" type="button" aria-label="{{ 'Cerrar' | t(request) }}" onclick="document.getElementById('create-plan').close()">×</button>
+    <p class="eyebrow">{{ 'Plan nuevo' | t(request) }}</p>
+    <h3>{{ 'Montamos un plan' | t(request) }}</h3>
+    <label>{{ 'Nombre' | t(request) }} <input name="name" required placeholder="{{ 'Ej. Lectura de verano' | t(request) }}" /></label>
+    <label>{{ 'Descripción' | t(request) }} <textarea name="description" rows="2" placeholder="{{ 'Opcional' | t(request) }}"></textarea></label>
     <div class="form-grid">
-      <label>Inicio <input type="date" name="start_day" value="{{ today_iso }}" required /></label>
-      <label>Capítulos al día <input type="number" name="chapters_per_day" min="1" value="3" required /></label>
+      <label>{{ 'Inicio' | t(request) }} <input type="date" name="start_day" value="{{ today_iso }}" required /></label>
+      <label>{{ 'Capítulos al día' | t(request) }} <input type="number" name="chapters_per_day" min="1" value="3" required /></label>
+    </div>
+    <div class="bible-range-control">
+      <div>
+        <strong>📖 {{ 'Biblia entera' | t(request) }}</strong>
+        <p class="muted">{{ 'Lee desde Génesis hasta Apocalipsis.' | t(request) }}</p>
+      </div>
+      <input id="whole-bible-value" type="hidden" name="whole_bible" value="true" />
+      <button id="whole-bible-toggle" class="switch is-on" type="button" role="switch" aria-checked="true" aria-label="{{ 'Biblia entera' | t(request) }}" onclick="toggleBibleRange()">
+        <span class="switch-track" aria-hidden="true"></span>
+      </button>
+    </div>
+    <div class="form-grid bible-book-range" id="bible-book-range" hidden>
+      <p class="bible-book-range-title">{{ 'Personaliza el tramo que quieres leer' | t(request) }}</p>
+      <label>
+        {{ 'Libro de inicio' | t(request) }}
+        <select name="start_book_order">
+          {% for book in bible_books %}
+          <option value="{{ book.book_order }}">{{ book.name }} ({{ book.chapters }} {{ 'caps.' | t(request) }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>
+        {{ 'Libro final' | t(request) }}
+        <select name="end_book_order">
+          {% for book in bible_books %}
+          <option value="{{ book.book_order }}" {% if loop.last %}selected{% endif %}>{{ book.name }} ({{ book.chapters }} {{ 'caps.' | t(request) }})</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="bible-range-control">
+      <div>
+        <strong>🔁 {{ 'Plan recurrente' | t(request) }}</strong>
+        <p class="muted">{{ 'Al terminar podrás reiniciarlo sin crear otro plan.' | t(request) }}</p>
+      </div>
+      <input id="recurring-plan-value" type="hidden" name="is_recurring" value="false" />
+      <button id="recurring-plan-toggle" class="switch" type="button" role="switch" aria-checked="false" aria-label="{{ 'Plan recurrente' | t(request) }}" onclick="toggleRecurringPlan()">
+        <span class="switch-track" aria-hidden="true"></span>
+      </button>
     </div>
     <div class="member-picker" id="create-member-picker">
-      <span class="member-picker-title" data-i18n="plans.members">¿Quién se apunta?</span>
+      <span class="member-picker-title">{{ '¿Quién se apunta?' | t(request) }}</span>
       <input type="hidden" name="member_ids" value="{{ current_user.id }}" />
       <span class="member-chip">{{ current_user.name }}</span>
       <details class="member-popover">
-        <summary aria-label="Añadir personas">+</summary>
+        <summary aria-label="{{ 'Añadir personas' | t(request) }}">+</summary>
         <div class="member-popup">
-          <strong>Añadir personas</strong>
+          <strong>{{ 'Añadir personas' | t(request) }}</strong>
           <div class="member-popup-options">
           {% for user in users if user.id != current_user.id %}
           <button class="member-option" type="button" data-user-id="{{ user.id }}" data-user-name="{{ user.name }}" onclick="addPlanMember(this, 'create-member-picker')">+ {{ user.name }}</button>
           {% else %}
-          <p class="muted">No hay más personas.</p>
+          <p class="muted">{{ 'No hay más personas.' | t(request) }}</p>
           {% endfor %}
           </div>
         </div>
       </details>
     </div>
     <div class="actions dialog-actions">
-      <button class="button secondary" type="button" onclick="document.getElementById('create-plan').close()" data-i18n="common.cancel">Cancelar</button>
-      <button class="button primary" type="submit" data-i18n="plans.create">Crear plan</button>
+      <button class="button secondary" type="button" onclick="document.getElementById('create-plan').close()">{{ 'Cancelar' | t(request) }}</button>
+      <button class="button primary" type="submit">{{ 'Crear plan' | t(request) }}</button>
     </div>
   </form>
 </dialog>
@@ -52,15 +91,15 @@
   <article class="plan-card">
     <div class="plan-card-head">
       <div>
-        <p class="eyebrow">📚 Plan</p>
+        <p class="eyebrow">📚 {{ 'Plan' | t(request) }}</p>
         <h3>{{ plan.name }}</h3>
       </div>
       <span class="pill ok">{{ plan.completion }}%</span>
     </div>
-    <p class="muted">{{ plan.description or 'Sin descripcion' }}</p>
+    <p class="muted">{{ plan.description or ('Sin descripción' | t(request)) }}</p>
     <div class="plan-meta">
-      <span>Inicio {{ plan.start_day_label }}</span>
-      <span>Fin {{ plan.estimated_finish_label }}</span>
+      <span>{{ 'Inicio' | t(request) }} {{ plan.start_day_label }}</span>
+      <span>{{ 'Fin' | t(request) }} {{ plan.estimated_finish_label }}</span>
       <span>{{ plan.chapters_per_day }} {{ 'caps/dia' | t(request) }}</span>
     </div>
     <div class="member-row">
@@ -73,66 +112,66 @@
 
     </div>
     <div class="plan-card-actions">
-        <a class="button secondary" href="/plans/{{ plan.id }}" data-i18n="plans.enter">🗓️ Entrar al plan</a>
-        <a class="button primary" href="/plans/{{ plan.id }}/info" data-i18n="plans.more">✨ Ver más</a>
-        <button class="icon-button" type="button" aria-label="Editar {{ plan.name }}" title="Editar plan" onclick="document.getElementById('edit-plan-{{ plan.id }}').showModal()">✎</button>
-        <button class="icon-button danger" type="button" aria-label="Borrar {{ plan.name }}" title="Borrar plan" onclick="document.getElementById('delete-plan-{{ plan.id }}').showModal()">🗑</button>
+        <a class="button secondary" href="/plans/{{ plan.id }}">🗓️ {{ 'Entrar al plan' | t(request) }}</a>
+        <a class="button primary" href="/plans/{{ plan.id }}/info">✨ {{ 'Ver más' | t(request) }}</a>
+        <button class="icon-button" type="button" aria-label="{{ 'Editar' | t(request) }} {{ plan.name }}" title="{{ 'Editar plan' | t(request) }}" onclick="document.getElementById('edit-plan-{{ plan.id }}').showModal()">✎</button>
+        <button class="icon-button danger" type="button" aria-label="{{ 'Borrar' | t(request) }} {{ plan.name }}" title="{{ 'Borrar plan' | t(request) }}" onclick="document.getElementById('delete-plan-{{ plan.id }}').showModal()">🗑</button>
       </div>
       <dialog class="delete-dialog" id="delete-plan-{{ plan.id }}">
           <div class="delete-dialog-content">
-            <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('delete-plan-{{ plan.id }}').close()">×</button>
-            <p class="eyebrow">¿Seguro?</p>
-            <h3>Vas a borrar “{{ plan.name }}”</h3>
-            <p class="muted">También se borrarán sus lecturas y notas. Esto no se puede deshacer.</p>
+            <button class="dialog-close" type="button" aria-label="{{ 'Cerrar' | t(request) }}" onclick="document.getElementById('delete-plan-{{ plan.id }}').close()">×</button>
+            <p class="eyebrow">{{ '¿Seguro?' | t(request) }}</p>
+            <h3>{{ 'Vas a borrar' | t(request) }} “{{ plan.name }}”</h3>
+            <p class="muted">{{ 'También se borrarán sus lecturas y notas. Esto no se puede deshacer.' | t(request) }}</p>
             <div class="actions delete-dialog-actions">
               <form method="dialog">
-                <button class="button secondary" type="submit">Cancelar</button>
+                <button class="button secondary" type="submit">{{ 'Cancelar' | t(request) }}</button>
               </form>
               <form method="post" action="/plans/{{ plan.id }}/delete">
-                <button class="button danger-button" type="submit">Sí, borrar</button>
+                <button class="button danger-button" type="submit">{{ 'Sí, borrar' | t(request) }}</button>
               </form>
             </div>
           </div>
       </dialog>
       <dialog class="plan-dialog" id="edit-plan-{{ plan.id }}">
           <form method="post" action="/plans/{{ plan.id }}/update" class="plan-form">
-            <button class="dialog-close" type="button" aria-label="Cerrar" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()">×</button>
-            <p class="eyebrow">Editar plan</p>
-            <h3>Haz los cambios que quieras</h3>
-            <label>Nombre <input name="name" value="{{ plan.name }}" required /></label>
-            <label>Descripción <textarea name="description" rows="2">{{ plan.description }}</textarea></label>
+            <button class="dialog-close" type="button" aria-label="{{ 'Cerrar' | t(request) }}" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()">×</button>
+            <p class="eyebrow">{{ 'Editar plan' | t(request) }}</p>
+            <h3>{{ 'Haz los cambios que quieras' | t(request) }}</h3>
+            <label>{{ 'Nombre' | t(request) }} <input name="name" value="{{ plan.name }}" required /></label>
+            <label>{{ 'Descripción' | t(request) }} <textarea name="description" rows="2">{{ plan.description }}</textarea></label>
             <div class="form-grid">
-              <label>Inicio <input type="date" name="start_day" value="{{ plan.start_day }}" required /></label>
-              <label>Capítulos al día <input type="number" name="chapters_per_day" min="1" value="{{ plan.chapters_per_day }}" required /></label>
+              <label>{{ 'Inicio' | t(request) }} <input type="date" name="start_day" value="{{ plan.start_day }}" required /></label>
+              <label>{{ 'Capítulos al día' | t(request) }} <input type="number" name="chapters_per_day" min="1" value="{{ plan.chapters_per_day }}" required /></label>
             </div>
             <div class="member-picker" id="edit-member-picker-{{ plan.id }}">
-              <span class="member-picker-title" data-i18n="plans.members">¿Quién se apunta?</span>
+              <span class="member-picker-title">{{ '¿Quién se apunta?' | t(request) }}</span>
               {% for member in plan.members %}
               <span class="member-chip editable-member" data-user-id="{{ member.id }}" data-user-name="{{ member.name }}">
                 <input type="hidden" name="member_ids" value="{{ member.id }}" />
                 {{ member.name }}
                 {% if member.id != current_user.id %}
-                <button class="member-remove" type="button" aria-label="Quitar a {{ member.name }}" onclick="removePlanMember(this, 'edit-member-picker-{{ plan.id }}')">×</button>
+                <button class="member-remove" type="button" aria-label="{{ 'Quitar a' | t(request) }} {{ member.name }}" onclick="removePlanMember(this, 'edit-member-picker-{{ plan.id }}')">×</button>
                 {% endif %}
               </span>
               {% endfor %}
               <details class="member-popover">
-                <summary aria-label="Añadir personas">+</summary>
+                <summary aria-label="{{ 'Añadir personas' | t(request) }}">+</summary>
                 <div class="member-popup">
-                  <strong>Añadir personas</strong>
+                  <strong>{{ 'Añadir personas' | t(request) }}</strong>
                   <div class="member-popup-options">
                   {% for user in users if user.id not in plan.member_ids %}
                   <button class="member-option" type="button" data-user-id="{{ user.id }}" data-user-name="{{ user.name }}" onclick="addPlanMember(this, 'edit-member-picker-{{ plan.id }}')">+ {{ user.name }}</button>
                   {% else %}
-                  <p class="muted">Ya están todos en el plan.</p>
+                  <p class="muted">{{ 'Ya están todos en el plan.' | t(request) }}</p>
                   {% endfor %}
                   </div>
                 </div>
               </details>
             </div>
             <div class="actions dialog-actions">
-              <button class="button secondary" type="button" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()" data-i18n="common.cancel">Cancelar</button>
-              <button class="button primary" type="submit" data-i18n="plans.save">Guardar cambios</button>
+              <button class="button secondary" type="button" onclick="document.getElementById('edit-plan-{{ plan.id }}').close()">{{ 'Cancelar' | t(request) }}</button>
+              <button class="button primary" type="submit">{{ 'Guardar cambios' | t(request) }}</button>
             </div>
           </form>
       </dialog>
@@ -140,6 +179,34 @@
   {% endfor %}
 </section>
 <script>
+  const wholeBibleToggle = document.getElementById('whole-bible-toggle');
+  const wholeBibleValue = document.getElementById('whole-bible-value');
+  const bibleBookRange = document.getElementById('bible-book-range');
+
+  function updateBibleRange() {
+    const useWholeBible = wholeBibleToggle.getAttribute('aria-checked') === 'true';
+    bibleBookRange.hidden = useWholeBible;
+    bibleBookRange.style.display = useWholeBible ? 'none' : 'grid';
+    wholeBibleValue.value = useWholeBible ? 'true' : 'false';
+  }
+
+  function toggleBibleRange() {
+    const useWholeBible = wholeBibleToggle.getAttribute('aria-checked') !== 'true';
+    wholeBibleToggle.setAttribute('aria-checked', String(useWholeBible));
+    wholeBibleToggle.classList.toggle('is-on', useWholeBible);
+    updateBibleRange();
+  }
+
+  function toggleRecurringPlan() {
+    const toggle = document.getElementById('recurring-plan-toggle');
+    const value = document.getElementById('recurring-plan-value');
+    const isRecurring = toggle.getAttribute('aria-checked') !== 'true';
+    toggle.setAttribute('aria-checked', String(isRecurring));
+    toggle.classList.toggle('is-on', isRecurring);
+    value.value = isRecurring ? 'true' : 'false';
+  }
+  updateBibleRange();
+
   function addPlanMember(option, pickerId) {
     const picker = document.getElementById(pickerId);
     const userId = option.dataset.userId;

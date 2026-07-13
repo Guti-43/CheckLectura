@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import time
 from contextlib import contextmanager
+from datetime import date, timedelta
 from hashlib import md5
 from typing import Any, Generator
 
@@ -16,6 +17,23 @@ DATABASE_URL = os.getenv(
 DEFAULT_USERS = [
     {'name': 'Giada', 'sort_order': 1},
     {'name': 'Guti', 'sort_order': 2},
+]
+
+# Orden y número de capítulos de los 66 libros de la Reina-Valera 1960.
+BIBLE_BOOKS = [
+    ('Génesis', 50), ('Éxodo', 40), ('Levítico', 27), ('Números', 36), ('Deuteronomio', 34),
+    ('Josué', 24), ('Jueces', 21), ('Rut', 4), ('1 Samuel', 31), ('2 Samuel', 24),
+    ('1 Reyes', 22), ('2 Reyes', 25), ('1 Crónicas', 29), ('2 Crónicas', 36), ('Esdras', 10),
+    ('Nehemías', 13), ('Ester', 10), ('Job', 42), ('Salmos', 150), ('Proverbios', 31),
+    ('Eclesiastés', 12), ('Cantares', 8), ('Isaías', 66), ('Jeremías', 52), ('Lamentaciones', 5),
+    ('Ezequiel', 48), ('Daniel', 12), ('Oseas', 14), ('Joel', 3), ('Amós', 9), ('Abdías', 1),
+    ('Jonás', 4), ('Miqueas', 7), ('Nahúm', 3), ('Habacuc', 3), ('Sofonías', 3),
+    ('Hageo', 2), ('Zacarías', 14), ('Malaquías', 4), ('Mateo', 28), ('Marcos', 16),
+    ('Lucas', 24), ('Juan', 21), ('Hechos', 28), ('Romanos', 16), ('1 Corintios', 16),
+    ('2 Corintios', 13), ('Gálatas', 6), ('Efesios', 6), ('Filipenses', 4), ('Colosenses', 4),
+    ('1 Tesalonicenses', 5), ('2 Tesalonicenses', 3), ('1 Timoteo', 6), ('2 Timoteo', 4),
+    ('Tito', 3), ('Filemón', 1), ('Hebreos', 13), ('Santiago', 5), ('1 Pedro', 5),
+    ('2 Pedro', 3), ('1 Juan', 5), ('2 Juan', 1), ('3 Juan', 1), ('Judas', 1), ('Apocalipsis', 22),
 ]
 
 DEFAULT_PLANS = [
@@ -158,6 +176,15 @@ def init_db() -> None:
             cur.execute('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_md5 text')
             cur.execute(
                 '''
+                CREATE TABLE IF NOT EXISTS bible_books (
+                    book_order smallint PRIMARY KEY,
+                    name text NOT NULL UNIQUE,
+                    chapters smallint NOT NULL CHECK (chapters > 0)
+                )
+                '''
+            )
+            cur.execute(
+                '''
                 CREATE TABLE IF NOT EXISTS plans (
                     id serial PRIMARY KEY,
                     name text NOT NULL UNIQUE,
@@ -165,11 +192,17 @@ def init_db() -> None:
                     start_day date NOT NULL,
                     chapters_per_day integer NOT NULL DEFAULT 3,
                     bible_total_chapters integer NOT NULL DEFAULT 1189,
+                    start_book_order smallint NOT NULL DEFAULT 1,
+                    end_book_order smallint NOT NULL DEFAULT 66,
+                    is_recurring boolean NOT NULL DEFAULT false,
                     sort_order integer NOT NULL DEFAULT 0,
                     updated_at timestamptz NOT NULL DEFAULT now()
                 )
                 '''
             )
+            cur.execute('ALTER TABLE plans ADD COLUMN IF NOT EXISTS start_book_order smallint NOT NULL DEFAULT 1')
+            cur.execute('ALTER TABLE plans ADD COLUMN IF NOT EXISTS end_book_order smallint NOT NULL DEFAULT 66')
+            cur.execute('ALTER TABLE plans ADD COLUMN IF NOT EXISTS is_recurring boolean NOT NULL DEFAULT false')
             cur.execute(
                 '''
                 CREATE TABLE IF NOT EXISTS plan_members (
@@ -225,6 +258,7 @@ def init_db() -> None:
             )
             conn.commit()
 
+        seed_bible_books(conn)
         if not _is_initial_seed_complete(conn):
             seed_users(conn)
             seed_plans(conn)
@@ -235,6 +269,46 @@ def init_db() -> None:
 
         _backfill_checkin_dates_for_streaks(conn)
         _backfill_user_passwords(conn)
+        _fill_empty_plan_days(conn)
+
+
+def seed_bible_books(conn: psycopg.Connection[Any]) -> None:
+    with conn.cursor() as cur:
+        for book_order, (name, chapters) in enumerate(BIBLE_BOOKS, start=1):
+            cur.execute(
+                '''
+                INSERT INTO bible_books (book_order, name, chapters)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (book_order) DO UPDATE
+                SET name = EXCLUDED.name, chapters = EXCLUDED.chapters
+                ''',
+                (book_order, name, chapters),
+            )
+    conn.commit()
+
+
+def _fill_empty_plan_days(conn: psycopg.Connection[Any]) -> None:
+    """Populate legacy plans that were created before automatic readings."""
+    books = get_bible_books(conn)
+    for plan in get_plans(conn):
+        with conn.cursor() as cur:
+            cur.execute('SELECT 1 FROM plan_days WHERE plan_id = %s LIMIT 1', (plan['id'],))
+            if cur.fetchone():
+                continue
+        selected_books = [
+            book
+            for book in books
+            if plan['start_book_order'] <= book['book_order'] <= plan['end_book_order']
+        ]
+        if selected_books:
+            generate_plan_days(
+                conn,
+                plan['id'],
+                plan['start_day'],
+                plan['chapters_per_day'],
+                selected_books,
+            )
+    conn.commit()
 
 
 def _is_initial_seed_complete(conn: psycopg.Connection[Any]) -> bool:
@@ -327,6 +401,12 @@ def get_users(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
         return [dict(row) for row in cur.fetchall()]
 
 
+def get_bible_books(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute('SELECT book_order, name, chapters FROM bible_books ORDER BY book_order')
+        return [dict(row) for row in cur.fetchall()]
+
+
 def get_user_by_credentials(conn: psycopg.Connection[Any], name: str, password: str) -> dict[str, Any] | None:
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(
@@ -404,7 +484,8 @@ def get_plans(conn: psycopg.Connection[Any]) -> list[dict[str, Any]]:
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(
             '''
-            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters,
+                   start_book_order, end_book_order, is_recurring, sort_order, updated_at
             FROM plans
             ORDER BY sort_order ASC, id ASC
             '''
@@ -416,7 +497,8 @@ def get_plan_by_name(conn: psycopg.Connection[Any], name: str) -> dict[str, Any]
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute(
             '''
-            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            SELECT id, name, description, start_day, chapters_per_day, bible_total_chapters,
+                   start_book_order, end_book_order, is_recurring, sort_order, updated_at
             FROM plans
             WHERE name = %s
             ''',
@@ -441,23 +523,108 @@ def create_plan(
     start_day: date,
     chapters_per_day: int,
     member_ids: list[int],
+    start_book_order: int = 1,
+    end_book_order: int = 66,
+    is_recurring: bool = False,
 ) -> dict[str, Any]:
+    books = get_bible_books(conn)
+    selected_books = [book for book in books if start_book_order <= book['book_order'] <= end_book_order]
+    if not selected_books:
+        raise ValueError('El rango de libros no es válido')
+    bible_total_chapters = sum(book['chapters'] for book in selected_books)
     with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
         cur.execute('SELECT COALESCE(MAX(sort_order), 0) + 1 AS next_order FROM plans')
         sort_order = cur.fetchone()['next_order']
         cur.execute(
             '''
-            INSERT INTO plans (name, description, start_day, chapters_per_day, sort_order)
-            VALUES (%s, %s, %s, %s, %s)
-            RETURNING id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            INSERT INTO plans (
+                name, description, start_day, chapters_per_day, bible_total_chapters,
+                start_book_order, end_book_order, is_recurring, sort_order
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, name, description, start_day, chapters_per_day, bible_total_chapters,
+                      start_book_order, end_book_order, is_recurring, sort_order, updated_at
             ''',
-            (name, description, start_day, chapters_per_day, sort_order),
+            (
+                name, description, start_day, chapters_per_day, bible_total_chapters,
+                start_book_order, end_book_order, is_recurring, sort_order,
+            ),
         )
         plan = dict(cur.fetchone())
         for user_id in member_ids:
             cur.execute('INSERT INTO plan_members (plan_id, user_id) VALUES (%s, %s)', (plan['id'], user_id))
+    generate_plan_days(conn, plan['id'], start_day, chapters_per_day, selected_books)
     conn.commit()
     return plan
+
+
+def restart_recurring_plan(conn: psycopg.Connection[Any], plan_id: int, start_day: date) -> bool:
+    plan = get_plan_by_id(conn, plan_id)
+    if plan is None or not plan['is_recurring']:
+        return False
+    books = [
+        book for book in get_bible_books(conn)
+        if plan['start_book_order'] <= book['book_order'] <= plan['end_book_order']
+    ]
+    if not books:
+        return False
+    with conn.cursor() as cur:
+        cur.execute('DELETE FROM plan_days WHERE plan_id = %s', (plan_id,))
+        cur.execute('UPDATE plans SET start_day = %s, updated_at = now() WHERE id = %s', (start_day, plan_id))
+    generate_plan_days(conn, plan_id, start_day, plan['chapters_per_day'], books)
+    conn.commit()
+    return True
+
+
+def get_plan_by_id(conn: psycopg.Connection[Any], plan_id: int) -> dict[str, Any] | None:
+    with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+        cur.execute(
+            '''
+            SELECT id, start_day, chapters_per_day, start_book_order, end_book_order, is_recurring
+            FROM plans WHERE id = %s
+            ''',
+            (plan_id,),
+        )
+        row = cur.fetchone()
+        return dict(row) if row else None
+
+
+def generate_plan_days(
+    conn: psycopg.Connection[Any],
+    plan_id: int,
+    start_day: date,
+    chapters_per_day: int,
+    books: list[dict[str, Any]],
+) -> None:
+    """Create one reading entry per day for the selected biblical range."""
+    chapters = [
+        (book['name'], chapter)
+        for book in books
+        for chapter in range(1, book['chapters'] + 1)
+    ]
+    with conn.cursor() as cur:
+        for day_index, offset in enumerate(range(0, len(chapters), chapters_per_day)):
+            reading = chapters[offset:offset + chapters_per_day]
+            label = _format_bible_reading(reading)
+            cur.execute(
+                '''
+                INSERT INTO plan_days (plan_id, day_date, title, scripture, notes)
+                VALUES (%s, %s, %s, %s, '')
+                ON CONFLICT (plan_id, day_date) DO NOTHING
+                ''',
+                (plan_id, start_day + timedelta(days=day_index), label, label),
+            )
+
+
+def _format_bible_reading(reading: list[tuple[str, int]]) -> str:
+    groups: list[tuple[str, int, int]] = []
+    for book_name, chapter in reading:
+        if groups and groups[-1][0] == book_name and chapter == groups[-1][2] + 1:
+            groups[-1] = (book_name, groups[-1][1], chapter)
+        else:
+            groups.append((book_name, chapter, chapter))
+    labels = [f'{name} {start}' if start == end else f'{name} {start}-{end}' for name, start, end in groups]
+    return ', '.join(labels[:-1]) + (' y ' if len(labels) > 1 else '') + labels[-1]
 
 
 def update_plan(
@@ -475,7 +642,8 @@ def update_plan(
             UPDATE plans
             SET name = %s, description = %s, start_day = %s, chapters_per_day = %s, updated_at = now()
             WHERE id = %s
-            RETURNING id, name, description, start_day, chapters_per_day, bible_total_chapters, sort_order, updated_at
+            RETURNING id, name, description, start_day, chapters_per_day, bible_total_chapters,
+                      start_book_order, end_book_order, is_recurring, sort_order, updated_at
             ''',
             (name, description, start_day, chapters_per_day, plan_id),
         )
